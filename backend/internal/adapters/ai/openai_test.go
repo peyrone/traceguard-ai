@@ -144,3 +144,45 @@ func TestRequestBodyIsRedacted(t *testing.T) {
 		}
 	}
 }
+
+func TestQuotaErrorIsNotRetried(t *testing.T) {
+	newQuotaClient := func(calls *int) *Client {
+		client := &http.Client{Transport: transportFunc(func(*http.Request) (*http.Response, error) {
+			(*calls)++
+			const body = `{"error":{"type":"insufficient_quota","code":"insufficient_quota","message":"synthetic"}}`
+			return &http.Response{StatusCode: http.StatusTooManyRequests, Body: io.NopCloser(strings.NewReader(body))}, nil
+		})}
+		return New("synthetic-test-key", "model-test", time.Second, client)
+	}
+
+	t.Run("Suggest", func(t *testing.T) {
+		calls := 0
+		_, err := newQuotaClient(&calls).Suggest(t.Context(), investigation.Request{Status: entities.Inconclusive})
+		if err == nil || calls != 1 {
+			t.Fatalf("Suggest: calls=%d err=%v", calls, err)
+		}
+	})
+
+	t.Run("ExplainFixture", func(t *testing.T) {
+		event := entities.Event{
+			EventID: "evt-quota-001", DataRef: "subject-quota-ref",
+			Action: "DATA_SENT", Outcome: "COMPLETED", Classification: "PII",
+			SourceService: "sales-api", DestinationService: "external-crm",
+		}
+		finding := entities.Finding{
+			RuleID: "DENY_EXTERNAL_PII", Status: entities.VerifiedViolation,
+			EvidenceEventIDs: []string{event.EventID},
+		}
+		graph := entities.Graph{Edges: []entities.Edge{{
+			Source: event.SourceService, Target: event.DestinationService,
+			EvidenceStatus: entities.Observed, EvidenceEventIDs: []string{event.EventID},
+		}}}
+		policy := entities.Policy{Classification: "PII", AllowedDestinations: []string{"internal-crm"}}
+		facts := investigation.NewFixtureFacts(finding, []entities.Event{event}, graph, policy, []entities.Finding{finding})
+		calls := 0
+		result, err := investigation.New(newQuotaClient(&calls)).ExplainFixture(t.Context(), finding, facts)
+		if err != nil || result.Mode != "fallback" || calls != 1 {
+			t.Fatalf("ExplainFixture: calls=%d mode=%q err=%v", calls, result.Mode, err)
+		}
+	})
+}
