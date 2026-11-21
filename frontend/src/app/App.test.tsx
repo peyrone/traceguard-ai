@@ -150,3 +150,26 @@ test('a late explanation cannot render after changing scenarios', async () => {
   await pending;
   expect(screen.queryByText('Stale explanation')).toBeNull();
 });
+
+test('transfer tests display the decision and execution result returned by the API', async () => {
+  const fallbackFetch = mockAPI();
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (!url.endsWith('/privacy/decisions')) return fallbackFetch(url);
+    const request = JSON.parse(String(init?.body));
+    const internal = request.destination_service === 'sales-api';
+    return Response.json(internal
+      ? { decision: 'ALLOW', transfer_executed: true, reason: 'Policy permits this transfer.', rule_id: 'TRANSFER_POLICY' }
+      : { decision: 'DENY', transfer_executed: false, reason: 'Destination denied.', rule_id: 'DENY_EXTERNAL_PII' });
+  });
+  vi.stubGlobal('fetch', fetch);
+  const user = userEvent.setup();
+  render(<App client={createApiClient()} />);
+  await user.click(screen.getByRole('button', { name: 'Test transfer' }));
+  expect(await screen.findByText('ALLOW · Simulation executed')).toBeTruthy();
+  await user.selectOptions(screen.getByLabelText('Transfer case'), '1');
+  await user.click(screen.getByRole('button', { name: 'Test transfer' }));
+  expect(await screen.findByText('DENY · Blocked before execution')).toBeTruthy();
+  expect(screen.getByText(/Destination denied/)).toBeTruthy();
+  const posted = fetch.mock.calls.filter(([url]) => url.endsWith('/privacy/decisions'));
+  expect(posted.map(([, init]) => JSON.parse(String(init?.body)).destination_service)).toEqual(['sales-api', 'external-crm']);
+});
