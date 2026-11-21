@@ -9,11 +9,12 @@ import './lineage.css';
 interface LineageGraphProps {
   graph: Graph;
   selectedFindingId: string | null;
+  highlightedEdgeIds?: string[];
   onSelectNode: (id: string) => void;
 }
 
-export function LineageGraph({ graph, onSelectNode }: LineageGraphProps) {
-  const { nodes, edges } = useMemo(() => toFlowElements(graph), [graph]);
+export function LineageGraph({ graph, onSelectNode, highlightedEdgeIds }: LineageGraphProps) {
+  const { nodes, edges } = useMemo(() => toFlowElements(graph, highlightedEdgeIds), [graph, highlightedEdgeIds]);
 
   if (nodes.length === 0) {
     return <p className="lineage-empty">No services in the available evidence.</p>;
