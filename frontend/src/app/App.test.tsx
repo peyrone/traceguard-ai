@@ -246,6 +246,11 @@ test('transfer tests display the decision and execution result returned by the A
   await user.click(screen.getByRole('button', { name: 'Test transfer' }));
   expect(await screen.findByText('ALLOW · Simulation executed')).toBeTruthy();
   await user.selectOptions(screen.getByLabelText('Transfer case'), '1');
+  const details = within(screen.getByRole('group', { name: 'Transfer details' }));
+  expect(details.getByText('sales-api')).toBeTruthy();
+  expect(details.getByText('external-crm')).toBeTruthy();
+  expect(details.queryByText('customer-api')).toBeNull();
+  expect(screen.queryByText('ALLOW · Simulation executed')).toBeNull();
   await user.click(screen.getByRole('button', { name: 'Test transfer' }));
   expect(await screen.findByText('DENY · Blocked before execution')).toBeTruthy();
   expect(screen.getByText(/Destination denied/)).toBeTruthy();
