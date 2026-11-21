@@ -33,6 +33,8 @@ Request:
 
 Callers supply either `scenario_id` or explicit `events` and `policy` (choose one mode; clarify in OpenAPI). Start with scenario IDs to save time, and enable custom logs only after P0.
 
+With a valid policy and no `scenario_id`, `events: []` returns HTTP 200 with `summary.status` set to `INCONCLUSIVE` and `events_processed` set to 0. With a `scenario_id`, an empty array as shown above loads the scenario's events.
+
 Response:
 
 ```json
