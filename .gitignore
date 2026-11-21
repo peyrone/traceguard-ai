@@ -1,0 +1,31 @@
+# macOS and editor files
+.DS_Store
+._*
+.idea/
+*.swp
+*.swo
+*~
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+.aws/
+
+# Frontend dependencies, builds, and caches
+node_modules/
+/frontend/dist/
+*.tsbuildinfo
+.vite/
+
+# Go build and test artifacts
+/backend/bin/
+/backend/traceguard-api
+*.test
+coverage.out
+coverage.html
+coverage/
+
+# Local logs
+*.log
