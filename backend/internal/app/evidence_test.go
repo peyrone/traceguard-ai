@@ -69,9 +69,9 @@ func TestEvidenceIntegrity(t *testing.T) {
 					evidence []string
 				}{
 					{"allowed_transfer", entities.NoViolationObserved, []string{"evt-a-001", "evt-a-005", "evt-a-006", "evt-a-007"}},
-					{"unauthorized_transfer", entities.VerifiedViolation, []string{"evt-003"}},
+					{"unauthorized_transfer", entities.VerifiedViolation, []string{"evt-u-003"}},
 					{"shuffled_transfer", entities.VerifiedViolation, []string{"evt-s-003"}},
-					{"missing_intermediate", entities.PotentialViolation, []string{"evt-004"}},
+					{"missing_intermediate", entities.PotentialViolation, []string{"evt-m-004"}},
 				} {
 					rec := post(t, transport.analyze, "/api/v1/analyze", map[string]any{"scenario_id": scenario.id})
 					var result api.AnalyzeResponse
