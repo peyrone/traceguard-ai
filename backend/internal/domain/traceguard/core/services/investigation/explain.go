@@ -3,9 +3,9 @@ package investigation
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/entities"
 )
@@ -45,11 +45,13 @@ type Result struct {
 	Mode             string          `json:"mode"`
 }
 
+var ErrInsufficientEvidence = errors.New("the verified finding requires all cited evidence and a supporting send")
+
 type Service struct{ provider Provider }
 
 func New(provider Provider) Service { return Service{provider: provider} }
 
-func (s Service) Explain(ctx context.Context, finding entities.Finding, ruleSummary string, supplied []Evidence) Result {
+func (s Service) Explain(ctx context.Context, finding entities.Finding, supplied []Evidence) (Result, error) {
 	byID := make(map[string]Evidence, len(supplied))
 	for _, item := range supplied {
 		if item.EventID != "" {
@@ -58,12 +60,17 @@ func (s Service) Explain(ctx context.Context, finding entities.Finding, ruleSumm
 	}
 	citations := []string{}
 	request := Request{Status: finding.Status, Evidence: []EvidenceMetadata{}}
-	for _, id := range slices.Compact(sortedCopy(finding.EvidenceEventIDs)) {
+	citedIDs := slices.Compact(sortedCopy(finding.EvidenceEventIDs))
+	supportsSend := false
+	for _, id := range citedIDs {
 		event, exists := byID[id]
 		if !exists {
 			continue
 		}
 		citations = append(citations, id)
+		// Summary metadata is optional. When present it cannot contradict a completed send.
+		supportsSend = supportsSend || ((event.Action == "" || event.Action == "DATA_SENT") &&
+			(event.Outcome == "" || event.Outcome == "COMPLETED"))
 		request.Evidence = append(request.Evidence, EvidenceMetadata{
 			Ref:     "E" + strconv.Itoa(len(citations)),
 			Action:  knownValue(event.Action, "DATA_SENT", "DATA_RECEIVED"),
@@ -74,7 +81,10 @@ func (s Service) Explain(ctx context.Context, finding entities.Finding, ruleSumm
 	var explanation string
 	switch finding.Status {
 	case entities.VerifiedViolation:
-		explanation = "Verified violation. Direct transfer evidence establishes a policy breach."
+		if len(citations) != len(citedIDs) || !supportsSend {
+			return Result{}, ErrInsufficientEvidence
+		}
+		explanation = "Verified violation. The selected finding cites evidence of a completed transfer that breached the policy."
 	case entities.PotentialViolation:
 		explanation = "Potential violation. Available evidence indicates a policy concern with gaps in confirmation."
 	case entities.NoViolationObserved:
@@ -82,31 +92,25 @@ func (s Service) Explain(ctx context.Context, finding entities.Finding, ruleSumm
 	default:
 		explanation = "Inconclusive. The available evidence is insufficient to determine the policy result."
 	}
-	for _, detail := range []string{finding.Message, ruleSummary} {
-		if detail = strings.TrimSpace(detail); detail != "" {
-			explanation += " " + detail
-		}
-	}
-
 	result := Result{Status: finding.Status, Explanation: explanation, NextSteps: defaultSteps(finding.Status), EvidenceEventIDs: citations, Mode: "fallback"}
 	if s.provider == nil || ctx.Err() != nil || !knownStatus(finding.Status) {
-		return result
+		return result, nil
 	}
 	suggestion, err := s.provider.Suggest(ctx, request)
 	if err != nil || ctx.Err() != nil || suggestion.Status != finding.Status {
-		return result
+		return result, nil
 	}
 	expectedRefs := make([]string, 0, len(request.Evidence))
 	for _, item := range request.Evidence {
 		expectedRefs = append(expectedRefs, item.Ref)
 	}
 	if !slices.Equal(sortedCopy(expectedRefs), sortedCopy(suggestion.EvidenceRefs)) {
-		return result
+		return result, nil
 	}
 	if steps := renderSteps(suggestion.StepIDs); len(steps) > 0 {
 		result.NextSteps, result.Mode = steps, "ai"
 	}
-	return result
+	return result, nil
 }
 
 func knownValue(value string, allowed ...string) string {

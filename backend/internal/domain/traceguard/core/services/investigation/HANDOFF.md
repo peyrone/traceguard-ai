@@ -5,7 +5,7 @@ All imports below are relative to `github.com/peyrone/traceguard-ai/backend`.
 | Package | Exported API |
 |---|---|
 | `internal/domain/traceguard/core/services/detection` | `Evaluator{}.Detect(ctx context.Context, events []entities.Event, graph entities.Graph, policy entities.Policy) ([]entities.Finding, error)` |
-| `internal/domain/traceguard/core/services/investigation` | `New(provider Provider) Service`, `Service.Explain(ctx context.Context, finding entities.Finding, ruleSummary string, supplied []Evidence) Result` |
+| `internal/domain/traceguard/core/services/investigation` | `New(provider Provider) Service`, `Service.Explain(ctx context.Context, finding entities.Finding, supplied []Evidence) (Result, error)` |
 | `internal/adapters/ai` | `New(apiKey, model string, timeout time.Duration, client *http.Client) *Client`, `(*Client).Suggest(ctx context.Context, input investigation.Request) (investigation.Suggestion, error)` |
 
 ## Analyze
@@ -29,9 +29,12 @@ and an event ID on an observed edge as well as the completed send itself.
 Keep analyze deterministic and invoke investigation from the separate stateless
 `POST /api/v1/explain` handler. BE1 can add the route to the shared spec and
 regenerate the bindings. Map the selected finding into `entities.Finding`.
-Pass the trusted rule summary and redacted evidence as `investigation.Evidence`
+Pass redacted evidence as `investigation.Evidence`
 values containing only `EventID`, `Action`, and `Outcome`. Call
-`Explain` with the request context. Map the result to `explanation`,
+`Explain` with the request context. Map insufficient verified evidence to a
+`400 INVALID_REQUEST` response. Caller-provided messages and rule summaries
+are accepted for wire compatibility and excluded from the rendered explanation.
+Map the result to `explanation`,
 `next_steps`, `evidence_event_ids`, and `mode`.
 
 Use `investigation.New(nil)` for offline mode. For AI mode, read

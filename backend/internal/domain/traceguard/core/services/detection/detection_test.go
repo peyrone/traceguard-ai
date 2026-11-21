@@ -80,3 +80,12 @@ func TestEvidenceAndPolicy(t *testing.T) {
 		t.Fatalf("empty audit findings=%+v err=%v", got, err)
 	}
 }
+
+func TestBlankEndpointCannotVerifyTransfer(t *testing.T) {
+	event := entities.Event{EventID: "send", Action: "DATA_SENT", Outcome: "COMPLETED", SourceService: "sales-api", DestinationService: " 	 ", Classification: "PII"}
+	graph := entities.Graph{Edges: []entities.Edge{{Source: event.SourceService, Target: event.DestinationService, EvidenceStatus: entities.Observed, EvidenceEventIDs: []string{event.EventID}}}}
+	findings, err := (detection.Evaluator{}).Detect(t.Context(), []entities.Event{event}, graph, entities.Policy{Classification: "PII"})
+	if err != nil || len(findings) != 1 || findings[0].Status != entities.Inconclusive {
+		t.Fatalf("findings = %+v, err = %v", findings, err)
+	}
+}

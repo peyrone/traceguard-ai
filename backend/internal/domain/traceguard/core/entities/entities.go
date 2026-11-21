@@ -1,6 +1,9 @@
 package entities
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type Event struct {
 	EventID            string    `json:"event_id"`
@@ -51,9 +54,23 @@ type Edge struct {
 	EvidenceEventIDs   []string
 }
 
+// InferredTransfer records event membership before graph edges are aggregated
+// by service pair. Its supporting events do not establish completion.
+type InferredTransfer struct {
+	Source, Target, ReceiptID string
+	SendEventIDs              []string
+}
+
 type Graph struct {
-	Nodes []Node
-	Edges []Edge
+	Nodes                  []Node
+	Edges                  []Edge
+	ConflictingEventIDs    []string
+	CorroboratedReceiptIDs []string
+	InferredTransfers      []InferredTransfer
+}
+
+func Meaningful(value string) bool {
+	return strings.TrimSpace(value) != ""
 }
 
 type Finding struct {

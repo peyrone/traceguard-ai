@@ -83,3 +83,11 @@ func TestReconstruct(t *testing.T) {
 		})
 	}
 }
+
+func TestBlankEndpointCannotCreateObservedEdge(t *testing.T) {
+	event := entities.Event{EventID: "send", Service: "sales-api", Action: "DATA_SENT", Outcome: "COMPLETED", SourceService: "sales-api", DestinationService: " 	 "}
+	_, graph := (Service{}).Reconstruct([]entities.Event{event})
+	if len(graph.Edges) != 0 || len(graph.Nodes) != 1 {
+		t.Fatalf("unexpected graph: %+v", graph)
+	}
+}

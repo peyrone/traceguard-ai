@@ -14,7 +14,11 @@ flowchart TD
   COR --> FIX[Synthetic JSON Fixtures]
 ```
 
-No persistent storage. Single Go HTTP server and one frontend SPA.
+No persistent storage. The frontend is one SPA. The Go API uses the same Echo
+router for the local HTTP server and Vercel Functions. The local binary binds
+the configured address, and the Vercel entry points invoke the router as an
+HTTP handler. Both entry points expose the same analysis and explanation logic.
+See the [Vercel deployment runbook](../backend/docs/vercel-deployment.md).
 
 ## Target repo layout (directories are placeholders until coding begins)
 
