@@ -86,3 +86,54 @@ func TestReviewStructuredOutput(t *testing.T) {
 		t.Fatalf("review=%+v err=%v", got, err)
 	}
 }
+
+func TestRequestBodyIsRedacted(t *testing.T) {
+	event := entities.Event{
+		EventID: "evt-sentinel-901", DataRef: "subject-sentinel-ref",
+		Action: "DATA_SENT", Outcome: "COMPLETED", Classification: "PII",
+		SourceService: "sales-api", DestinationService: "external-crm",
+	}
+	finding := entities.Finding{
+		RuleID: "DENY_EXTERNAL_PII", Status: entities.VerifiedViolation,
+		EvidenceEventIDs: []string{event.EventID},
+	}
+	graph := entities.Graph{Edges: []entities.Edge{{
+		Source: event.SourceService, Target: event.DestinationService,
+		EvidenceStatus: entities.Observed, EvidenceEventIDs: []string{event.EventID},
+	}}}
+	policy := entities.Policy{Classification: "PII", AllowedDestinations: []string{"internal-crm"}}
+	facts := investigation.NewFixtureFacts(finding, []entities.Event{event}, graph, policy, []entities.Finding{finding})
+
+	var body []byte
+	calls := 0
+	client := &http.Client{Transport: transportFunc(func(req *http.Request) (*http.Response, error) {
+		calls++
+		var err error
+		body, err = io.ReadAll(req.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Rank the observed send, the destination concern, and its confidentiality mapping.
+		content := `{"status":"VERIFIED_VIOLATION","evidence_refs":["E1"],"step_ids":["review_export"],"review":{"insights":[{"id":"I1","evidence_refs":["E1"]},{"id":"I2","evidence_refs":["E1"]}],"mappings":[{"id":"5(1)(f)","evidence_refs":["E1"]}]}}`
+		message, err := json.Marshal(content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response := `{"choices":[{"finish_reason":"stop","message":{"content":` + string(message) + `}}]}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(response))}, nil
+	})}
+
+	service := investigation.New(New("synthetic-test-key", "model-test", time.Second, client))
+	result, err := service.ExplainFixture(t.Context(), finding, facts)
+	if err != nil || calls != 1 || result.Mode != "ai" {
+		t.Fatalf("provider calls=%d mode=%q err=%v", calls, result.Mode, err)
+	}
+	if !strings.Contains(string(body), `\"ref\":\"E1\"`) {
+		t.Error("serialized request is missing evidence alias E1")
+	}
+	for _, sentinel := range []string{event.EventID, event.DataRef} {
+		if strings.Contains(string(body), sentinel) {
+			t.Errorf("serialized request contains sentinel %q", sentinel)
+		}
+	}
+}
