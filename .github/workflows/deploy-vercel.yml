@@ -1,0 +1,168 @@
+name: Deploy TraceGuard AI to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-vercel-production-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  VERCEL_CLI_VERSION: '58.4.4'
+
+jobs:
+  test:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/.node-version
+      - name: Test and vet Go
+        working-directory: backend
+        run: go test ./... && go vet ./...
+      - name: Test and build Vite
+        working-directory: frontend
+        run: npm ci && npm test && npm run build
+
+  deploy-api:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/.node-version
+      - name: Install Vercel CLI
+        run: npm install --global "vercel@$VERCEL_CLI_VERSION"
+      - name: Deploy API to production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_PROJECT_ID }}
+        # Vercel applies the selected project's Root Directory from the repo root.
+        run: |
+          vercel pull --yes --environment=production
+          vercel build --prod
+          vercel deploy --prebuilt --prod
+
+  smoke-api:
+    if: github.ref == 'refs/heads/main'
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API health, scenarios, CORS, analysis and explanation
+        shell: bash
+        env:
+          API_URL: ${{ vars.API_URL }}
+          UI_URL: ${{ vars.UI_URL }}
+        run: |
+          : "${API_URL:?Set the API_URL Actions variable}"
+          : "${UI_URL:?Set the UI_URL Actions variable}"
+          api="${API_URL%/}"
+          ui="${UI_URL%/}"
+          curl_args=(--fail-with-body --silent --show-error --connect-timeout 5 --max-time 20)
+
+          for attempt in {1..12}; do
+            if curl "${curl_args[@]}" "$api/healthz" | jq -e '.status == "ok"' >/dev/null; then
+              break
+            fi
+            if [[ "$attempt" == 12 ]]; then
+              echo 'API health check did not become ready' >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+          echo 'Checking scenario list'
+          curl "${curl_args[@]}" "$api/api/v1/scenarios" |
+            jq -e 'type == "array" and length == 4 and any(.[]; .id == "unauthorized_transfer")' >/dev/null
+
+          echo 'Checking CORS preflight'
+          curl "${curl_args[@]}" --dump-header - --output /dev/null \
+            -X OPTIONS "$api/api/v1/analyze" \
+            -H "Origin: $ui" \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: content-type' |
+            awk -v origin="$ui" '
+              { sub(/\r$/, "") }
+              /^HTTP\// { status = $2 }
+              tolower($1) == "access-control-allow-origin:" && $2 == origin { allowed = 1 }
+              END { exit !(status ~ /^2[0-9][0-9]$/ && allowed) }
+            '
+
+          echo 'Checking analysis evidence'
+          analysis=$(curl "${curl_args[@]}" "$api/api/v1/analyze" \
+            -H "Origin: $ui" -H 'Content-Type: application/json' \
+            --data '{"scenario_id":"unauthorized_transfer"}')
+          finding=$(jq -ce '
+            select(.summary.status == "VERIFIED_VIOLATION")
+            | first(.findings[] | select(.status == "VERIFIED_VIOLATION"
+              and (.evidence_event_ids | index("evt-003") != null)))
+          ' <<< "$analysis")
+
+          echo 'Checking explanation evidence'
+          jq -c '{
+            finding: .,
+            rule_summary: "PII transfers require an allowed destination and purpose.",
+            evidence: [{event_id: "evt-003"}]
+          }' <<< "$finding" |
+            curl "${curl_args[@]}" "$api/api/v1/explain" \
+              -H "Origin: $ui" -H 'Content-Type: application/json' --data-binary @- |
+            jq -e '.evidence_event_ids | index("evt-003") != null' >/dev/null
+
+  deploy-ui:
+    if: github.ref == 'refs/heads/main'
+    needs: smoke-api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/.node-version
+      - name: Install Vercel CLI
+        run: npm install --global "vercel@$VERCEL_CLI_VERSION"
+      - name: Deploy UI to production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_UI_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production
+          vercel build --prod
+          vercel deploy --prebuilt --prod
+
+  smoke-ui:
+    if: github.ref == 'refs/heads/main'
+    needs: deploy-ui
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check UI and SPA deep link
+        shell: bash
+        env:
+          UI_URL: ${{ vars.UI_URL }}
+        run: |
+          : "${UI_URL:?Set the UI_URL Actions variable}"
+          for path in / /lineage/demo; do
+            status=$(curl --silent --show-error --connect-timeout 5 --max-time 20 \
+              --output /dev/null --write-out '%{http_code}' "${UI_URL%/}$path")
+            echo "GET $path returned $status"
+            [[ "$status" == 200 ]]
+          done
