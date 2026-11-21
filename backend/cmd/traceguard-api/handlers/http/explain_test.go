@@ -14,6 +14,7 @@ import (
 	api "github.com/peyrone/traceguard-ai/backend/cmd/traceguard-api/handlers/http/api_gen"
 	"github.com/peyrone/traceguard-ai/backend/internal/adapters/fixtures"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/entities"
+	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/ports"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/detection"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/investigation"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/lineage"
@@ -23,6 +24,53 @@ type explanationProvider func(context.Context, investigation.Request) (investiga
 
 func (f explanationProvider) Suggest(ctx context.Context, request investigation.Request) (investigation.Suggestion, error) {
 	return f(ctx, request)
+}
+
+type unavailableFixture struct{ fixtures.Store }
+
+func (unavailableFixture) Load(context.Context, string) ([]entities.Event, entities.Policy, error) {
+	return nil, entities.Policy{}, errors.New("fixture read failed")
+}
+
+type unavailableDetector struct{}
+
+func (unavailableDetector) Detect(context.Context, []entities.Event, entities.Graph, entities.Policy) ([]entities.Finding, error) {
+	return nil, errors.New("fixture analysis failed")
+}
+
+func TestExplainFixtureLookup(t *testing.T) {
+	const payload = `{"finding":{"id":"custom","rule_id":"TRANSFER_POLICY","status":"INCONCLUSIVE","message":"Insufficient evidence.","evidence_event_ids":[],"missing_evidence":[]},"rule_summary":"Check the transfer.","evidence":[]}`
+	for _, tc := range []struct {
+		name     string
+		store    ports.Fixtures
+		detector ports.Detector
+		status   int
+	}{
+		{"no match", fixtures.Store{}, detection.Evaluator{}, http.StatusOK},
+		{"load failure", unavailableFixture{}, detection.Evaluator{}, http.StatusInternalServerError},
+		{"analysis failure", fixtures.Store{}, unavailableDetector{}, http.StatusInternalServerError},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			router := echo.New()
+			Register(router, tc.store, lineage.Service{}, tc.detector, investigation.New(nil))
+			res := httptest.NewRecorder()
+			router.ServeHTTP(res, httptest.NewRequest(http.MethodPost, "/api/v1/explain", strings.NewReader(payload)))
+			if res.Code != tc.status {
+				t.Fatalf("got HTTP %d, want %d: %s", res.Code, tc.status, res.Body)
+			}
+			if tc.status == http.StatusOK {
+				var explained api.ExplainResponse
+				if err := json.Unmarshal(res.Body.Bytes(), &explained); err != nil || explained.Mode != "fallback" {
+					t.Fatalf("expected generic explanation: %s", res.Body)
+				}
+				return
+			}
+			var failure api.Error
+			if err := json.Unmarshal(res.Body.Bytes(), &failure); err != nil || failure.Code != "EXPLANATION_FAILED" || failure.Message == "" {
+				t.Fatalf("expected explanation error: %s", res.Body)
+			}
+		})
+	}
 }
 
 func TestExplainHTTP(t *testing.T) {

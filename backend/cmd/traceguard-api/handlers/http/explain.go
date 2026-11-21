@@ -42,9 +42,12 @@ func (s *server) Explain(c echo.Context) error {
 		ID: finding.Id, RuleID: finding.RuleId, Status: status, Message: finding.Message,
 		EvidenceEventIDs: finding.EvidenceEventIds, MissingEvidence: finding.MissingEvidence,
 	}
+	facts, err := s.fixtureFacts(ctx, selected, evidence)
+	if err != nil {
+		return fail(c, http.StatusInternalServerError, "EXPLANATION_FAILED", "Could not evaluate the scenario evidence.")
+	}
 	var result investigation.Result
-	var err error
-	if facts := s.fixtureFacts(ctx, selected, evidence); facts != nil {
+	if facts != nil {
 		result, err = s.investigation.ExplainFixture(ctx, selected, *facts)
 	} else {
 		result, err = s.investigation.Explain(ctx, selected, evidence)
@@ -83,19 +86,19 @@ func (s *server) Explain(c echo.Context) error {
 
 // Match the existing finding payload against server-owned analysis. Equivalent
 // fixtures (such as the shuffled replay) can share the same explanation facts.
-func (s *server) fixtureFacts(ctx context.Context, selected entities.Finding, evidence []investigation.Evidence) *investigation.FixtureFacts {
+func (s *server) fixtureFacts(ctx context.Context, selected entities.Finding, evidence []investigation.Evidence) (*investigation.FixtureFacts, error) {
 	if s.fixtures == nil || s.lineage == nil || s.detector == nil {
-		return nil
+		return nil, nil
 	}
 	var matched *investigation.FixtureFacts
 	for _, fixture := range s.fixtures.List() {
 		events, policy, err := s.fixtures.Load(ctx, fixture.ID)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		events, graph, findings, err := s.analyze(ctx, events, policy)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		for _, finding := range findings {
 			if !reflect.DeepEqual(finding, selected) {
@@ -108,20 +111,20 @@ func (s *server) fixtureFacts(ctx context.Context, selected entities.Finding, ev
 					return item.EventID == trusted.EventID
 				})
 				if index < 0 {
-					return nil
+					return nil, nil
 				}
 				for _, item := range evidence[index:] {
 					if item.EventID == trusted.EventID && (item.Action != "" && item.Action != trusted.Action ||
 						item.Outcome != "" && item.Outcome != trusted.Outcome) {
-						return nil
+						return nil, nil
 					}
 				}
 			}
 			if matched != nil && !reflect.DeepEqual(*matched, facts) {
-				return nil
+				return nil, nil
 			}
 			matched = &facts
 		}
 	}
-	return matched
+	return matched, nil
 }

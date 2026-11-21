@@ -82,6 +82,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '500':
+          description: The server could not load or analyze scenario evidence for the explanation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/privacy/decisions:
     post:
       operationId: CreatePrivacyDecision
