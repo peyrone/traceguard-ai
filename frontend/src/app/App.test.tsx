@@ -354,10 +354,16 @@ test('dashboard prioritizes verified cases and opens the selected case in its re
     mode: 'fallback' as const, next_steps: ['Review the destination.'],
   }));
   render(<App client={{ ...client, listScenarios: async () => [{ id: 'clear', label: 'Internal case' }, { id: 'leak', label: 'Export case' }],
-    analyze: async id => id === 'clear' ? { ...analysis, summary: { status: 'NO_VIOLATION_OBSERVED', events_processed: 1 }, findings: [] } : { ...analysis, findings: [analysis.findings[0]] },
+    analyze: async id => id === 'clear' ? {
+      ...analysis,
+      summary: { status: 'NO_VIOLATION_OBSERVED', events_processed: 1 },
+      graph: { ...analysis.graph, edges: [{ ...analysis.graph.edges[0], evidence_event_ids: ['evt-001'] }] },
+      findings: [],
+    } : { ...analysis, findings: [analysis.findings[0]] },
     explain }} />);
   await screen.findByRole('heading', { name: 'Dashboard' });
   const open = await screen.findByRole('link', { name: 'Open case Export case' });
+  expect(screen.getByRole('heading', { name: 'evt-003' })).toBeTruthy();
   expect(within(screen.getByRole('banner', { name: 'Application' })).getAllByRole('link')).toHaveLength(1);
   const distribution = within(screen.getByRole('figure', { name: 'Case status distribution' }));
   expect(distribution.getAllByText('50%')).toHaveLength(2);
@@ -366,6 +372,7 @@ test('dashboard prioritizes verified cases and opens the selected case in its re
   expect(evidence.getAllByTitle('1 observed, 0 inferred')).toHaveLength(2);
   expect(screen.queryByRole('link', { name: 'Open case Internal case' })).toBeNull();
   await user.click(screen.getByRole('checkbox'));
+  expect(screen.getByRole('heading', { name: 'evt-001' })).toBeTruthy();
   expect(screen.getAllByRole('link', { name: /Open case/ })[0]).toBe(open);
   expect(screen.getByRole('link', { name: 'View report for Export case' }).getAttribute('href')).toBe('#report?case=leak');
   await user.click(open);
@@ -384,6 +391,55 @@ test('dashboard prioritizes verified cases and opens the selected case in its re
   await user.click(screen.getByRole('link', { name: /Back to dashboard/ }));
   await user.click(await screen.findByRole('link', { name: 'View report for Export case' }));
   expect(await screen.findByRole('article', { name: 'Case report' })).toBeTruthy();
+});
+
+test('dashboard keeps cited audit cards collapsed until requested', async () => {
+  window.history.replaceState(null, '', '/');
+  const client = createApiClient();
+  render(<App client={{
+    ...client,
+    listScenarios: async () => [{ id: 'partial_evidence_confirmed', label: 'Partial evidence' }],
+    analyze: async () => ({
+      ...analysis,
+      findings: [{ ...analysis.findings[0], evidence_event_ids: ['evt-e-002', 'evt-a-001'] }],
+    }),
+  }} />);
+  await screen.findByRole('heading', { name: 'evt-e-002, evt-a-001' });
+  const toggle = screen.getByText('Audit details');
+  const details = toggle.closest('details');
+  expect(details?.open).toBe(false);
+  await userEvent.click(toggle);
+  expect(details?.open).toBe(true);
+  const record = within(screen.getByRole('group', { name: 'Audit event evt-e-002' }));
+  const timestamp = record.getByText('21 Nov 2026, 03:10:03');
+  expect(timestamp.getAttribute('datetime')).toBe('2026-11-21T03:10:03Z');
+  expect(record.getAllByRole('term').map(term => term.textContent)).toEqual([
+    'Occurred at (UTC)', 'Event ID', 'Service', 'Action', 'Outcome', 'Trace ID',
+  ]);
+  expect(record.getAllByRole('definition').map(definition => definition.textContent)).toEqual([
+    '21 Nov 2026, 03:10:03', 'evt-e-002', 'sales-api', 'Data sent', 'Completed', 'trace-e-001',
+  ]);
+  expect(screen.queryByText('Synthetic audit log')).toBeNull();
+  expect(screen.getByText('Audit record unavailable for evt-a-001')).toBeTruthy();
+  expect(screen.queryByRole('group', { name: 'Audit event evt-e-001' })).toBeNull();
+  await userEvent.click(toggle);
+  expect(details?.open).toBe(false);
+});
+
+test('dashboard identifies review cases without event IDs', async () => {
+  window.history.replaceState(null, '', '/');
+  const client = createApiClient();
+  render(<App client={{
+    ...client,
+    listScenarios: async () => [{ id: 'missing', label: 'Incomplete case' }],
+    analyze: async () => ({
+      summary: { status: 'INCONCLUSIVE', events_processed: 0 },
+      graph: { nodes: [], edges: [] },
+      findings: [{ ...analysis.findings[1], evidence_event_ids: [] }],
+    }),
+  }} />);
+  expect(await screen.findByRole('link', { name: 'Open case Incomplete case' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'No event ID available' })).toBeTruthy();
 });
 
 test.each(['#workspace', '#report', '#report?case=missing'])('a link without an available case leads to the dashboard: %s', async hash => {
