@@ -12,15 +12,15 @@ import (
 )
 
 func TestDemoScenarios(t *testing.T) {
-	var direct []entities.Finding
+	var direct entities.Finding
 	for _, tc := range []struct {
 		id       string
 		want     entities.Status
 		evidence string
 	}{
-		{"allowed_transfer", entities.NoViolationObserved, "evt-001"},
+		{"allowed_transfer", entities.NoViolationObserved, "evt-a-001"},
 		{"unauthorized_transfer", entities.VerifiedViolation, "evt-003"},
-		{"shuffled_transfer", entities.VerifiedViolation, "evt-003"},
+		{"shuffled_transfer", entities.VerifiedViolation, "evt-s-003"},
 		{"missing_intermediate", entities.PotentialViolation, "evt-004"},
 	} {
 		t.Run(tc.id, func(t *testing.T) {
@@ -34,10 +34,14 @@ func TestDemoScenarios(t *testing.T) {
 				t.Fatalf("findings=%+v err=%v", got, err)
 			}
 			if tc.id == "unauthorized_transfer" {
-				direct = got
+				direct = got[0]
 			}
-			if tc.id == "shuffled_transfer" && !reflect.DeepEqual(direct, got) {
-				t.Fatalf("shuffled findings = %+v, want %+v", got, direct)
+			if tc.id == "shuffled_transfer" {
+				direct.ID = got[0].ID
+				direct.EvidenceEventIDs = []string{tc.evidence}
+				if !reflect.DeepEqual(direct, got[0]) {
+					t.Fatalf("shuffled finding = %+v, want %+v", got[0], direct)
+				}
 			}
 		})
 	}

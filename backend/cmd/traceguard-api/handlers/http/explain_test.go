@@ -90,7 +90,7 @@ func TestFixtureExplanation(t *testing.T) {
 		{"missing_intermediate", "evt-004", "INFERRED", "completed_send", "collect_completed_send", "review_export", entities.PotentialViolation},
 		{"partial_evidence_confirmed", "evt-e-001", "INFERRED", "completed_send", "collect_completed_send", "review_export", entities.Inconclusive},
 		{"partial_evidence_confirmed", "evt-e-002", "OBSERVED", "", "review_export", "collect_completed_send", entities.VerifiedViolation},
-		{"shuffled_transfer", "evt-003", "OBSERVED", "", "review_export", "collect_completed_send", entities.VerifiedViolation},
+		{"shuffled_transfer", "evt-s-003", "OBSERVED", "", "review_export", "collect_completed_send", entities.VerifiedViolation},
 	} {
 		t.Run(tc.scenario+"/"+tc.event, func(t *testing.T) {
 			for _, failure := range []string{"", "action", "status", "citation", "article", "insight_citation", "provider", "timeout"} {
