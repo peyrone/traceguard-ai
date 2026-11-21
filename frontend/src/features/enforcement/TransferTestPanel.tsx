@@ -1,41 +1,52 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../components/Icon";
 import "./transfer-test.css";
-import type { PrivacyDecisionRequest, PrivacyDecisionResponse } from "../../lib/api/types";
-
-const transferCases = [
-  { label: "Internal sales transfer", source: "customer-api", destination: "sales-api", category: "PII" },
-  { label: "External CRM transfer", source: "sales-api", destination: "external-crm", category: "PII" },
-  { label: "Operational case write", source: "case-router", destination: "case-store", category: "INTERNAL" },
-];
-
-const policy = { policy_id: "policy-001", purpose: "CUSTOMER_SERVICE" };
+import type { AnalyzeResponse, PrivacyDecisionRequest, PrivacyDecisionResponse } from "../../lib/api/types";
 
 interface Props {
-  defaultCase?: "internal" | "external";
+  scenarioID: string;
+  analysis: AnalyzeResponse | null;
+  loading: boolean;
   decide: (request: PrivacyDecisionRequest, signal?: AbortSignal) => Promise<PrivacyDecisionResponse>;
 }
 
-export function TransferTestPanel({ decide, defaultCase = "internal" }: Props) {
-  const [selected, setSelected] = useState(defaultCase === "external" ? 1 : 0);
+export function TransferTestPanel({ scenarioID, analysis, loading, decide }: Props) {
+  const [selectedID, setSelectedID] = useState("");
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<PrivacyDecisionResponse>();
   const [error, setError] = useState("");
-  const current = transferCases[selected];
+  const active = useRef<AbortController | null>(null);
+
+  useEffect(() => () => active.current?.abort(), []);
+
+  const nodes = new Set(analysis?.graph.nodes.map((node) => node.id));
+  const edges = new Map(analysis?.graph.edges.map((edge) => [edge.id, edge]));
+  const candidates = analysis?.transfer_candidates?.filter((candidate) => {
+    const edge = edges.get(candidate.edge_id);
+    return nodes.has(candidate.source_service) && nodes.has(candidate.destination_service)
+      && edge?.source === candidate.source_service && edge.target === candidate.destination_service
+      && edge.evidence_status === candidate.evidence_status
+      && candidate.evidence_event_ids.every((id) => edge.evidence_event_ids.includes(id));
+  }) ?? [];
+  const selected = candidates.find((candidate) => candidate.id === selectedID);
 
   async function testTransfer() {
+    if (!selected || loading || pending || !scenarioID) return;
+    const controller = new AbortController();
+    active.current = controller;
     setPending(true);
     setError("");
     setResult(undefined);
     try {
-      setResult(await decide({
-        source_service: current.source, destination_service: current.destination,
-        ...policy, data_categories: [current.category],
-      }, AbortSignal.timeout(6000)));
+      const response = await decide({ scenario_id: scenarioID, candidate_id: selected.id },
+        AbortSignal.any([controller.signal, AbortSignal.timeout(6000)]));
+      if (!controller.signal.aborted) setResult(response);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The privacy decision request failed.");
+      if (!controller.signal.aborted) {
+        setError(cause instanceof Error ? cause.message : "The privacy decision request failed.");
+      }
     } finally {
-      setPending(false);
+      if (!controller.signal.aborted) setPending(false);
     }
   }
 
@@ -43,33 +54,43 @@ export function TransferTestPanel({ decide, defaultCase = "internal" }: Props) {
     <section id="transfer-enforcement" className="surface transfer-panel" aria-labelledby="transfer-test-title">
       <header className="panel-heading">
         <h2 id="transfer-test-title"><Icon name="shield" />Simulated transfer enforcement</h2>
-        <span className="transfer-policy">Policy <code>{policy.policy_id}</code></span>
+        {selected && <span className="transfer-policy">Policy <code>{selected.policy_id}</code></span>}
       </header>
       <div className="transfer-layout">
         <div className="transfer-controls">
-          <label htmlFor="privacy-transfer-case">Transfer case</label>
-          <select id="privacy-transfer-case" value={selected} disabled={pending} onChange={(event) => {
-            setSelected(Number(event.target.value));
+          <label htmlFor="privacy-transfer-case">Scenario transfer</label>
+          <select id="privacy-transfer-case" value={selected?.id ?? ""} disabled={loading || pending || candidates.length === 0} onChange={(event) => {
+            setSelectedID(event.target.value);
             setResult(undefined);
             setError("");
           }}>
-            {transferCases.map(({ label }, index) => <option key={label} value={index}>{label}</option>)}
+            <option value="">Select a transfer</option>
+            {candidates.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.source_service} → {candidate.destination_service} · {candidate.evidence_status} · {candidate.evidence_event_ids.join(", ")}
+              </option>
+            ))}
           </select>
-          <button className="transfer-submit" type="button" disabled={pending} onClick={() => void testTransfer()}>
+          {!loading && candidates.length === 0 && <p>No transfer evidence is available to simulate.</p>}
+          <button className="transfer-submit" type="button" disabled={loading || pending || !selected || !scenarioID} onClick={() => void testTransfer()}>
             <Icon name={pending ? "refresh" : "route"} size={17} />{pending ? "Checking policy…" : "Test transfer"}
           </button>
         </div>
-        <div className="transfer-preview" role="group" aria-label="Transfer details">
-          <div className="transfer-path">
-            <div><span>Source</span><code>{current.source}</code></div>
-            <span className="transfer-connector" aria-hidden="true"><Icon name="route" size={20} /></span>
-            <div><span>Destination</span><code>{current.destination}</code></div>
+        {selected && (
+          <div className="transfer-preview" role="group" aria-label="Transfer details">
+            <div className="transfer-path">
+              <div><span>Source</span><code>{selected.source_service}</code></div>
+              <span className="transfer-connector" aria-hidden="true"><Icon name="route" size={20} /></span>
+              <div><span>Destination</span><code>{selected.destination_service}</code></div>
+            </div>
+            <dl className="transfer-attributes">
+              <div><dt>Data category</dt><dd>{selected.classification ?? "Unknown"}</dd></div>
+              <div><dt>Purpose</dt><dd>{selected.purpose ?? "Unknown"}</dd></div>
+              <div><dt>Historical evidence</dt><dd>{selected.evidence_status === "OBSERVED" ? "Observed completed send" : "Inferred relationship"}</dd></div>
+              <div><dt>Supporting events</dt><dd>{selected.evidence_event_ids.map((id) => <code key={id}>{id} </code>)}</dd></div>
+            </dl>
           </div>
-          <dl className="transfer-attributes">
-            <div><dt>Data category</dt><dd>{current.category}</dd></div>
-            <div><dt>Purpose</dt><dd>{policy.purpose}</dd></div>
-          </dl>
-        </div>
+        )}
       </div>
       {pending && <p role="status" className="sr-only">Checking transfer policy…</p>}
       {error && <p role="alert" className="transfer-feedback" data-tone="error"><strong>Policy check failed</strong>{error}</p>}

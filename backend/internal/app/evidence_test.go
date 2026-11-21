@@ -78,6 +78,7 @@ func TestEvidenceIntegrity(t *testing.T) {
 					if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil || rec.Code != http.StatusOK || result.Summary.Status != api.Status(scenario.status) {
 						t.Fatalf("%s: %d %s (%v)", scenario.id, rec.Code, rec.Body, err)
 					}
+					result.TransferCandidates = nil // Candidate IDs are scenario-scoped.
 					if scenario.id == "unauthorized_transfer" {
 						direct = result
 					}

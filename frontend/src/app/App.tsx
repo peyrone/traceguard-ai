@@ -157,7 +157,6 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
 
   const references = useMemo(() => analysis ? collectReferences(analysis.graph, analysis.findings) : [], [analysis]);
   const selectedReference = references.find(item => item.id === referenceId);
-  const defaultTransferCase = analysis?.summary.status === 'VERIFIED_VIOLATION' ? 'external' : 'internal';
   const graph = analysis?.graph;
   const selectedFinding = analysis?.findings.find((finding) => finding.id === selectedFindingId);
   const highlightedEdgeIds = graph ? getHighlightedEdgeIds(graph, selectedFinding?.evidence_event_ids ?? []) : [];
@@ -266,7 +265,13 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
           <EvidenceReferences graph={graph} selectedFindingId={selectedFindingId} references={references} onInspect={setReferenceId} />
           {selectedReference && <ReferenceDialog item={selectedReference} graph={graph} onClose={() => setReferenceId(null)} />}
         </>}
-        <TransferTestPanel key={scenarioID + ":" + defaultTransferCase} defaultCase={defaultTransferCase} decide={client.decidePrivacy} />
+        <TransferTestPanel
+          key={scenarioID + ":" + (analysis ? "ready" : "waiting")}
+          scenarioID={scenarioID}
+          analysis={analysis}
+          loading={analyzing || listing}
+          decide={client.decidePrivacy}
+        />
       </main>
     </>
   );
