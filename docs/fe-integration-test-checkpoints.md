@@ -470,3 +470,109 @@ Result: **PASS**, exit 0.
 - Requested by user: run frontend in browser. Vite restarted on `http://127.0.0.1:5173/` using NVM Node v24.16.0.
 - Dedicated browser host remains unavailable; native Chrome control succeeded. Verified visible heading “TraceGuard AI”, “Synthetic audit data · API mode”, scenario control and “Retry scenarios”.
 - Page shows “Unable to load scenarios. Failed to fetch” because the backend is unavailable. Frontend boot passes; live scenarios remain BLOCKED. This does not verify the 1440/1024/390 graph layouts.
+
+## Automated run 2026-11-21T05:00:11.142Z
+
+Runtime: v24.16.0. Each task updates this file before and after execution. Test output below records each individual test result.
+
+### CP-02: Merged Node suites — RUNNING
+
+Command from frontend: `npm run test:unit`
+
+Result: **PASS**, exit 0.
+
+```text
+
+> traceguard-ai-frontend@0.1.0 test:unit
+> node --test src/features/lineage/*.test.ts src/features/investigation/*.test.ts src/lib/api/*.test.ts src/lib/fixtures/*.test.ts
+
+12:00:11 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+✔ the standalone panels expose the referenced events and analysis states (105.752416ms)
+✔ allowed-flow evidence does not pass through an unrelated external service (0.52225ms)
+✔ finding evidence highlights only matching edges and their endpoints (0.900458ms)
+✔ node positions remain stable after input order changes, including cyclic and isolated services (0.241333ms)
+✔ external services carry an explicit text label (0.104917ms)
+✔ observed and inferred links keep distinct labels and cite only supplied events (0.195875ms)
+✔ joins hosted and local URLs with each API endpoint (0.607959ms)
+✔ the HTTP client follows the OpenAPI paths and exact request bodies (25.345333ms)
+✔ the HTTP client handles API errors and rejects unknown evidence citations (0.432458ms)
+✔ mock mode analyzes named scenarios and explains using the supplied finding evidence (0.664292ms)
+✔ shuffled events preserve analysis without sharing input order (0.866166ms)
+✔ fixture findings and edges reference input events and keep inferred links distinct (0.147916ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 377.004375
+
+```
+
+### CP-03: App component integration — RUNNING
+
+Command from frontend: `npm exec -- vitest run --reporter=verbose`
+
+Result: **PASS**, exit 0.
+
+```text
+
+ RUN  v5.1.1 /Users/feem/Documents/hackathonOpenAI/traceguard-ai/frontend
+
+ ✓ src/app/App.test.tsx > automatic analysis drives highlights and evidence remains inspectable without matching edges 65ms
+ ✓ src/app/App.test.tsx > scenario changes clear service selection and explanation before automatic analysis 35ms
+ ✓ src/app/App.test.tsx > API failures stay visible without substituting a preview graph; retry recovers 9ms
+ ✓ src/app/App.test.tsx > late analysis from the previous scenario cannot replace current results 14ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  12:00:12
+   Duration  742ms (environment 63%, tests 18%, import 17%, transform 2%)
+
+
+```
+
+### CP-04: Production build — RUNNING
+
+Command from frontend: `npm run build`
+
+Result: **PASS**, exit 0.
+
+```text
+
+> traceguard-ai-frontend@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v8.3.8 building client environment for production...
+transforming...
+✓ 48 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.39 kB │ gzip:   0.27 kB
+dist/assets/index-C7Y-EtX8.css   20.42 kB │ gzip:   4.04 kB
+dist/assets/index-Da-YbzLE.js   482.08 kB │ gzip: 158.13 kB
+
+✓ built in 106ms
+[MODULE_LEVEL_DIRECTIVE] The semantics of the module level directive "use no memo" in "node_modules/react-compiler-runtime/dist/index.js" may not be preserved when bundling.
+    ╭─[ node_modules/react-compiler-runtime/dist/index.js:14:1 ]
+    │
+ 14 │ "use no memo";
+    │ ───────┬──────
+    │        ╰──────── module level directive may not be preserved
+    │
+    │ Help: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+────╯
+
+
+```
+
+### CP-04: Whitespace verification — RUNNING
+
+Command from frontend: `git diff --check`
+
+Result: **PASS**, exit 0.
+
+```text
+
+```

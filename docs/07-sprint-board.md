@@ -70,3 +70,9 @@
 - FE1 commit and FE2 merge are local on `feat/fe-framework-graph`; no push or merge to main performed. Concurrent `docs/plans/` edits are excluded from these commits.
 
 - Browser boot update: opened `http://127.0.0.1:5173/` in native Chrome and verified the rendered app. Backend fetch failure remains visible; CP-07 records the observed state. Responsive graph checks and real API flow remain unverified.
+
+## Release verification for main merge
+
+- User authorized commit, push and merge. Latest `origin/main` backend fixes (`db6c0f6`) merged into FE1 without conflicts.
+- `npm run test:checkpoints` on the integrated branch exits 0: 12 Node + 4 component tests, TypeScript/Vite production build and whitespace check passed. Exact individual results recorded in the checkpoint file.
+- Native Chrome boot verified; backend scenario fetch remains unavailable locally. No backend test pass is claimed. Concurrent planning edits remain excluded from the release.
