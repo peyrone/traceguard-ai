@@ -1,3 +1,4 @@
+import { EvidenceId } from "./EvidenceId";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ExplainResponse, Finding } from "../../lib/api/types.ts";
 
@@ -9,6 +10,7 @@ type ExplanationState =
   | { status: "error"; message: string };
 
 interface ExplanationContentProps {
+  onInspect?: (id: string) => void;
   state?: ExplanationState;
   onExplain: () => void;
   finding?: Finding;
@@ -47,14 +49,17 @@ export function ExplanationPanel({ finding, onRequest, relatedEvidence }: Explan
   return <ExplanationContent state={state} onExplain={explain} finding={finding} relatedEvidence={relatedEvidence} />;
 }
 
-export function ExplanationContent({ state, onExplain, finding, relatedEvidence }: ExplanationContentProps) {
+export function ExplanationContent({ state, onExplain, onInspect, finding, relatedEvidence }: ExplanationContentProps) {
+  const [expanded, setExpanded] = useState(false);
   return (
-    <section className="tg-investigation-panel" aria-label="Explanation">
-      <h2>Explanation</h2>
+    <section className="surface explanation" aria-label="Explanation">
+      <button className="explain-disclosure" type="button" aria-expanded={expanded} onClick={() => {
+        setExpanded(!expanded);
+        if (!expanded && !state) onExplain();
+      }}>{expanded ? "Hide explanation" : "Explain finding"} <span aria-hidden="true">{expanded ? "−" : "+"}</span></button>
+      <div className="explanation-body" hidden={!expanded}>
       {finding && <p>Selected rule <code>{finding.rule_id}</code></p>}
-      <button className="tg-explain-button" type="button" onClick={onExplain} disabled={state?.status === "loading"}>
-        {state?.status === "error" ? "Retry explanation" : "Explain finding"}
-      </button>
+      {state?.status === "error" && <button type="button" onClick={onExplain}>Retry explanation</button>}
       {state?.status === "loading" && <p role="status">Loading explanation…</p>}
       {state?.status === "error" && <p role="alert">{state.message}</p>}
       {relatedEvidence}
@@ -64,7 +69,7 @@ export function ExplanationContent({ state, onExplain, finding, relatedEvidence 
           <p>{state.result.explanation}</p>
           {state.result.evidence_event_ids.length > 0 && (
             <ul className="tg-event-ids" aria-label="Cited audit events">
-              {state.result.evidence_event_ids.map((id) => <li key={id}><code>{id}</code></li>)}
+              {state.result.evidence_event_ids.map((id) => <li key={id}><EvidenceId id={id} onInspect={onInspect} /></li>)}
             </ul>
           )}
           {state.result.next_steps.length > 0 && (
@@ -77,6 +82,7 @@ export function ExplanationContent({ state, onExplain, finding, relatedEvidence 
           )}
         </div>
       )}
+      </div>
     </section>
   );
 }

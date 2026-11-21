@@ -16,7 +16,7 @@ export function getHighlightedEdgeIds(graph: Graph, evidenceEventIds: readonly s
   return graph.edges.filter((edge) => edge.evidence_event_ids.some((id) => evidence.has(id))).map((edge) => edge.id).sort();
 }
 
-export function toFlowElements(graph: Graph, highlightedEdgeIds: readonly string[] = []): { nodes: Node[]; edges: Edge[] } {
+export function toFlowElements(graph: Graph, highlightedEdgeIds: readonly string[] = [], vertical = false): { nodes: Node[]; edges: Edge[] } {
   const highlighted = new Set(highlightedEdgeIds);
   const endpoints = new Set(graph.edges.filter((edge) => highlighted.has(edge.id)).flatMap((edge) => [edge.source, edge.target]));
   const ordered = [...graph.nodes].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -46,13 +46,16 @@ export function toFlowElements(graph: Graph, highlightedEdgeIds: readonly string
     const row = rows.get(column) ?? 0;
     rows.set(column, row + 1);
     return {
-    id,
-    selected: endpoints.has(id),
-    data: { label: kind === 'external' ? `${label} · External` : label },
-    className: kind === 'external' ? 'lineage-node--external' : undefined,
-    position: { x: column * 320, y: row * 180 },
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
+      id,
+      selected: endpoints.has(id),
+      type: 'service',
+      data: { name: label, kind, label: kind === 'external' ? `${label} · External` : label },
+      className: kind === 'external' ? 'lineage-node--external' : undefined,
+      position: vertical
+        ? { x: row * 215 + (column % 2) * 40, y: column * 140 }
+        : { x: column * 310, y: row * 180 - column * 48 },
+      sourcePosition: vertical ? Position.Bottom : Position.Right,
+      targetPosition: vertical ? Position.Top : Position.Left,
     };
   });
 
@@ -68,7 +71,7 @@ export function toFlowElements(graph: Graph, highlightedEdgeIds: readonly string
       target: edge.target,
       label,
       ariaLabel: label,
-      markerEnd: { type: MarkerType.ArrowClosed, color: observed ? '#21675c' : '#725427' },
+      markerEnd: { type: MarkerType.ArrowClosed, color: highlighted.has(edge.id) ? '#e3c9ff' : '#b4a7c6' },
       className: observed ? 'lineage-edge--observed' : 'lineage-edge--inferred',
     };
   });

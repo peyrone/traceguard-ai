@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ExplainResponse, Finding, Graph } from "../../lib/api/types.ts";
 import { EvidencePanel } from "./EvidencePanel.tsx";
 import { ExplanationContent, ExplanationPanel, type RequestExplanation } from "./ExplanationPanel.tsx";
@@ -13,31 +13,40 @@ interface InvestigationProps {
   onSelectFinding: (id: string) => void;
   selectedFindingId?: string | null;
   graph?: Graph;
+  onInspect?: (id: string) => void;
   state?: LoadState;
 }
 
+interface ControlledExplanationProps {
+  finding?: Finding;
+  relatedEvidence?: ReactNode;
+  onExplain: () => void;
+  explanation: ExplainResponse | null;
+  explanationError: string | null;
+  explaining: boolean;
+  onInspect?: (id: string) => void;
+}
+
 type InvestigationPanelProps = InvestigationProps & (
-  | {
-      onExplain: () => void;
-      explanation: ExplainResponse | null;
-      explanationError: string | null;
-      explaining: boolean;
-      requestExplanation?: never;
-    }
+  | (ControlledExplanationProps & { requestExplanation?: never })
   | { onExplain?: never; requestExplanation?: RequestExplanation }
 );
 
-export function InvestigationPanel(props: InvestigationPanelProps) {
-  const { findings, onSelectFinding, selectedFindingId, graph, requestExplanation, state } = props;
-  const [localSelection, setLocalSelection] = useState<Finding | null>(null);
-  const ready = state === undefined || state.status === "ready";
-  const selection = selectedFindingId === undefined
-    ? findings.find((item) => item === localSelection)
-    : findings.find((item) => item.id === selectedFindingId);
-  const finding = ready ? selection ?? null : null;
+export function ControlledExplanation(props: ControlledExplanationProps) {
+  let state: Parameters<typeof ExplanationContent>[0]["state"];
+  if (props.explaining) state = { status: "loading" };
+  else if (props.explanationError !== null) state = { status: "error", message: props.explanationError };
+  else if (props.explanation !== null) state = { status: "ready", result: props.explanation };
+  return <ExplanationContent finding={props.finding} relatedEvidence={props.relatedEvidence} state={state} onExplain={props.onExplain} onInspect={props.onInspect} />;
+}
 
+export function UpstreamEvidence({ graph, finding, findings }: {
+  graph?: Graph;
+  finding: Finding;
+  findings: Finding[];
+}) {
   const outboundSources = new Set(graph?.edges
-    .filter((edge) => finding?.status === "VERIFIED_VIOLATION" && edge.evidence_status === "OBSERVED" &&
+    .filter((edge) => finding.status === "VERIFIED_VIOLATION" && edge.evidence_status === "OBSERVED" &&
       edge.evidence_event_ids.some((id) => finding.evidence_event_ids.includes(id)))
     .map((edge) => edge.source));
   const upstreamLinks = graph?.edges.filter((edge) =>
@@ -46,7 +55,7 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
   const relatedFindings = findings.filter((item) => item.status === "INCONCLUSIVE" &&
     upstreamLinks.some((edge) => edge.evidence_event_ids.some((id) => item.evidence_event_ids.includes(id))));
   const nodeLabels = new Map(graph?.nodes.map(({ id, label }) => [id, label]));
-  const relatedEvidence = relatedFindings.length > 0 && (
+  return relatedFindings.length > 0 ? (
     <section aria-label="Separate upstream finding">
       <h3>Separate upstream finding</h3>
       <p>The shared service leaves the data’s upstream origin unresolved.</p>
@@ -61,38 +70,43 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
         ))}
       </ul>
     </section>
-  );
+  ) : null;
+}
 
+export function InvestigationPanel(props: InvestigationPanelProps) {
+  const { findings, onSelectFinding, selectedFindingId, graph, requestExplanation, state } = props;
+  const [localSelection, setLocalSelection] = useState<Finding | null>(null);
+  const ready = state === undefined || state.status === "ready";
+  const selection = selectedFindingId === undefined
+    ? findings.find((item) => item === localSelection)
+    : findings.find((item) => item.id === selectedFindingId);
+  const finding = ready ? selection ?? null : null;
+
+  const relatedEvidence = finding && <UpstreamEvidence graph={graph} finding={finding} findings={findings} />;
   let explanationPanel;
   if (finding !== null && props.onExplain !== undefined) {
-    let explanationState: Parameters<typeof ExplanationContent>[0]["state"];
-    if (props.explaining) {
-      explanationState = { status: "loading" };
-    } else if (props.explanationError !== null) {
-      explanationState = { status: "error", message: props.explanationError };
-    } else if (props.explanation !== null) {
-      explanationState = { status: "ready", result: props.explanation };
-    }
-    explanationPanel = <ExplanationContent state={explanationState} onExplain={props.onExplain} finding={finding} relatedEvidence={relatedEvidence} />;
+    explanationPanel = <ControlledExplanation key={finding.id} {...props} finding={finding} relatedEvidence={relatedEvidence} />;
   } else if (finding !== null && requestExplanation !== undefined) {
-    explanationPanel = <ExplanationPanel finding={finding} onRequest={requestExplanation} relatedEvidence={relatedEvidence} />;
+    explanationPanel = <ExplanationPanel relatedEvidence={relatedEvidence} finding={finding} onRequest={requestExplanation} />;
   }
 
   return (
-    <div className={props.onExplain === undefined ? "tg-investigation" : "investigation-panel tg-investigation"}>
-      <FindingsPanel
-        findings={findings}
-        onSelectFinding={(id) => {
-          if (selectedFindingId === undefined) {
-            setLocalSelection(findings.find((item) => item.id === id) ?? null);
-          }
-          onSelectFinding(id);
-        }}
-        selectedFindingId={finding?.id}
-        state={state}
-      />
-      {ready && findings.length > 0 && <EvidencePanel finding={finding} graph={graph} />}
+    <>
+      <div className="surface inspector">
+        <FindingsPanel
+          findings={findings}
+          onSelectFinding={(id) => {
+            if (selectedFindingId === undefined) {
+              setLocalSelection(findings.find((item) => item.id === id) ?? null);
+            }
+            onSelectFinding(id);
+          }}
+          selectedFindingId={finding?.id}
+          state={state}
+        />
+        {ready && findings.length > 0 && <EvidencePanel finding={finding} graph={graph} onInspect={props.onInspect} />}
+      </div>
       {explanationPanel}
-    </div>
+    </>
   );
 }

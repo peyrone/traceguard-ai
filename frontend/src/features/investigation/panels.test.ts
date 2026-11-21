@@ -33,6 +33,11 @@ test("the standalone panels expose the referenced events and analysis states", a
         state,
       }));
 
+    const { FindingStatus } = await server.ssrLoadModule("/src/features/investigation/FindingStatus.tsx") as typeof import("./FindingStatus.tsx");
+    for (const status of ["VERIFIED_VIOLATION", "POTENTIAL_VIOLATION", "INCONCLUSIVE", "NO_VIOLATION_OBSERVED"] as const) {
+      const label = renderToStaticMarkup(createElement(FindingStatus, { status }));
+      assert.equal(label.includes('class="finding-issue-icon"'), status.endsWith("_VIOLATION"), status);
+    }
     const markup = render();
     assert.match(markup, /Potential violation/);
     assert.match(markup, /evt-004/);

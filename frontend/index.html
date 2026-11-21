@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TraceGuard AI</title>
+    <title>Investigation workspace · TraceGuard AI</title>
+    <script>
+      let saved;
+      try { saved = localStorage.getItem('traceguard-theme'); } catch {}
+      const root = document.documentElement;
+      if (saved === 'dark' || saved === 'light') root.dataset.preference = saved;
+      root.dataset.theme = root.dataset.preference || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    </script>
   </head>
   <body>
     <div id="root"></div>
