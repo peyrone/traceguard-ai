@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"github.com/peyrone/traceguard-ai/backend/internal/app"
+	"github.com/peyrone/traceguard-ai/backend/vercelapi"
 )
 
 func NotFound(w http.ResponseWriter, r *http.Request) {
-	app.ServeFunction(w, r, "/api/v1/unknown")
+	vercelapi.ServeFunction(w, r, "/api/v1/unknown")
 }
