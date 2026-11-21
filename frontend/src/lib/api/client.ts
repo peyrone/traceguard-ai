@@ -1,70 +1,97 @@
-import type { Graph } from '../../features/lineage/flow-elements';
+import { createExplainRequest, evidenceIdsForRequest } from "./explanation.ts";
+import { isAnalyzeResponse, isErrorResponse, isExplainResponse, isScenarioList } from "./response.ts";
+import type { Finding, TraceGuardClient } from "./types.ts";
 
-export interface Scenario {
-  id: string;
-  label: string;
+export type { AnalysisStatus as Status, AnalyzeResponse as Analysis, ExplainResponse as Explanation, Finding, Scenario } from "./types.ts";
+
+type Endpoint = "scenarios" | "analyze" | "explain";
+const configuredBaseURL = import.meta.env?.VITE_API_BASE_URL?.trim() ?? "";
+const localBaseURL = "http://localhost:8080";
+export const hasConfiguredBackend = configuredBaseURL !== "";
+
+function versionedBaseURL(baseURL: string): string {
+  const base = baseURL.trim().replace(/\/+$/, "");
+  return base.endsWith("/api/v1") ? base : `${base}/api/v1`;
 }
-
-export type Status = 'VERIFIED_VIOLATION' | 'POTENTIAL_VIOLATION' | 'INCONCLUSIVE' | 'NO_VIOLATION_OBSERVED';
-
-export interface Finding {
-  id: string;
-  rule_id: string;
-  status: Status;
-  message: string;
-  evidence_event_ids: string[];
-  missing_evidence: string[];
-}
-
-export interface Analysis {
-  summary: { status: Status; events_processed: number };
-  graph: Graph;
-  findings: Finding[];
-}
-
-export interface Explanation {
-  explanation: string;
-  next_steps: string[];
-  evidence_event_ids: string[];
-  mode: 'ai' | 'fallback';
-}
-
-type Endpoint = 'scenarios' | 'analyze' | 'explain';
-const configuredBaseURL = import.meta.env?.VITE_API_BASE_URL?.trim() ?? '';
-export const hasConfiguredBackend = configuredBaseURL !== '';
 
 export function apiURL(baseURL: string, endpoint: Endpoint): string {
-  const base = (baseURL.trim() || 'http://localhost:8080').replace(/\/+$/, '');
-  const versioned = base.endsWith('/api/v1') ? base : `${base}/api/v1`;
-  return `${versioned}/${endpoint}`;
+  return `${versionedBaseURL(baseURL.trim() || localBaseURL)}/${endpoint}`;
 }
 
-export function createApiClient(baseURL = configuredBaseURL) {
-  async function request<T>(endpoint: Endpoint, signal: AbortSignal, data?: object): Promise<T> {
-    const response = await fetch(apiURL(baseURL, endpoint), {
-      method: data ? 'POST' : 'GET',
-      headers: data ? { 'Content-Type': 'application/json' } : undefined,
-      body: data ? JSON.stringify(data) : undefined,
+export class TraceGuardApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = "TraceGuardApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+interface ClientOptions {
+  baseUrl?: string;
+  fetch?: typeof fetch;
+}
+
+export function createTraceGuardClient({
+  baseUrl = "",
+  fetch: fetchRequest = globalThis.fetch.bind(globalThis),
+}: ClientOptions = {}): TraceGuardClient {
+  const prefix = versionedBaseURL(baseUrl);
+
+  async function request<T>(
+    path: string,
+    isResponse: (value: unknown) => value is T,
+    signal?: AbortSignal,
+    payload?: object,
+  ): Promise<T> {
+    const response = await fetchRequest(prefix + path, {
+      method: payload === undefined ? "GET" : "POST",
+      headers: payload === undefined ? undefined : { "Content-Type": "application/json" },
+      body: payload === undefined ? undefined : JSON.stringify(payload),
       signal,
     });
+    const data: unknown = await response.json().catch(() => undefined);
     if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      throw new Error(typeof body?.message === 'string' ? body.message : `API request failed (${response.status}).`);
+      const error = isErrorResponse(data) ? data : {
+        code: "HTTP_ERROR",
+        message: `TraceGuard API request failed (HTTP ${response.status}).`,
+      };
+      throw new TraceGuardApiError(response.status, error.code, error.message);
     }
-    return response.json();
+    if (!isResponse(data)) throw new Error("TraceGuard API returned an unexpected response.");
+    return data;
   }
 
   return {
-    listScenarios: (signal: AbortSignal) => request<Scenario[]>('scenarios', signal),
+    listScenarios: (signal) => request("/scenarios", isScenarioList, signal),
+    analyze: (input, signal) => request("/analyze", isAnalyzeResponse, signal, input),
+    async explain(input, signal) {
+      const result = await request("/explain", isExplainResponse, signal, input);
+      const knownIds = new Set(evidenceIdsForRequest(input));
+      if (result.evidence_event_ids.some((id) => !knownIds.has(id))) {
+        throw new Error("Explanation cited an unknown evidence event ID.");
+      }
+      return result;
+    },
+  };
+}
+
+export function createApiClient(baseURL = configuredBaseURL) {
+  const client = createTraceGuardClient({ baseUrl: baseURL.trim() || localBaseURL });
+  return {
+    listScenarios: client.listScenarios,
     analyze: (scenarioID: string, signal: AbortSignal) =>
-      request<Analysis>('analyze', signal, { scenario_id: scenarioID }),
-    explain: (finding: Finding, signal: AbortSignal) => request<Explanation>('explain', signal, {
-      finding,
-      rule_summary: finding.rule_id === 'DENY_PURPOSE'
-        ? 'The transfer purpose must be on the policy allowlist.'
-        : 'Transfers covered by the policy must use an allowed destination and purpose.',
-      evidence: finding.evidence_event_ids.map((event_id) => ({ event_id })),
-    }),
+      client.analyze({ scenario_id: scenarioID }, signal),
+    explain: (finding: Finding, signal: AbortSignal) =>
+      client.explain(createExplainRequest({
+        finding,
+        ruleSummary: finding.rule_id === "DENY_PURPOSE"
+          ? "The transfer purpose must be on the policy allowlist."
+          : "Transfers covered by the policy must use an allowed destination and purpose.",
+      }), signal),
   };
 }
 
