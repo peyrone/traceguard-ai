@@ -1,3 +1,4 @@
+import { useLanguage } from '../../lib/language';
 import { Background, Controls, Handle, Position, ReactFlow, type NodeProps } from '@xyflow/react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -9,6 +10,7 @@ import './lineage.css';
 const fitOptions = { padding: { top: 70, bottom: 18, x: 24 }, maxZoom: 1.1 };
 
 function ServiceNode({ data, sourcePosition, targetPosition }: NodeProps) {
+  const { t } = useLanguage();
   return <>
     <Handle type="target" position={targetPosition ?? Position.Left} />
     <span className="service-kind">
@@ -19,7 +21,7 @@ function ServiceNode({ data, sourcePosition, targetPosition }: NodeProps) {
           <rect x="3" y="3" width="18" height="8" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 7h2m-2 10h2"/>
         </>}
       </svg>
-      {String(data.kind)}
+      {t(String(data.kind))}
     </span>
     <strong>{String(data.name)}</strong>
     <Handle type="source" position={sourcePosition ?? Position.Right} />
@@ -36,6 +38,7 @@ interface LineageGraphProps {
 }
 
 export function LineageGraph({ graph, onSelectNode, highlightedEdgeIds }: LineageGraphProps) {
+  const { t } = useLanguage();
   const [vertical, setVertical] = useState(() => window.matchMedia('(max-width: 650px)').matches);
   useEffect(() => {
     const query = window.matchMedia('(max-width: 650px)');
@@ -43,16 +46,22 @@ export function LineageGraph({ graph, onSelectNode, highlightedEdgeIds }: Lineag
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
   }, []);
-  const { nodes, edges } = useMemo(() => toFlowElements(graph, highlightedEdgeIds, vertical), [graph, highlightedEdgeIds, vertical]);
+  const { nodes, edges } = useMemo(() => toFlowElements(graph, highlightedEdgeIds, vertical, t), [graph, highlightedEdgeIds, vertical, t]);
 
   if (nodes.length === 0) {
-    return <p className="lineage-empty">No services in the available evidence.</p>;
+    return <p className="lineage-empty">{t("No services in the available evidence.")}</p>;
   }
 
   return (
     <div className="lineage-canvas">
       <ReactFlow
         key={vertical ? "vertical" : "horizontal"}
+        ariaLabelConfig={{
+          'controls.ariaLabel': t('Control Panel'),
+          'controls.zoomIn.ariaLabel': t('Zoom In'),
+          'controls.zoomOut.ariaLabel': t('Zoom Out'),
+          'controls.fitView.ariaLabel': t('Fit View'),
+        }}
         nodeTypes={nodeTypes}
         nodes={nodes}
         edges={edges}

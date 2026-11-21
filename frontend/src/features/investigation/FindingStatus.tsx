@@ -1,3 +1,4 @@
+import { useLanguage } from '../../lib/language';
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../components/Icon";
 import type { AnalysisStatus } from "../../lib/api/types";
@@ -31,9 +32,10 @@ function IssueIcon({ name }: { name: "violation" | "warning" }) {
 }
 
 export function FindingStatus({ status }: { status: AnalysisStatus }) {
+  const { t } = useLanguage();
   return <strong className="finding-status" data-status={status}>
     {(status === "VERIFIED_VIOLATION" || status === "POTENTIAL_VIOLATION") &&
       <IssueIcon key={status} name={status === "VERIFIED_VIOLATION" ? "violation" : "warning"} />}
-    {statusLabels[status]}
+    {t(statusLabels[status])}
   </strong>;
 }

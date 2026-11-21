@@ -394,3 +394,28 @@ test.each(['#workspace', '#report', '#report?case=missing'])('a link without an 
   expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeTruthy();
   if (hash.includes('missing')) expect(screen.getByRole('alert').textContent).toContain('missing');
 });
+
+test('Thai labels follow the current case and persist when the app reopens', async () => {
+  window.history.replaceState(null, '', '#dashboard');
+  mockAPI();
+  const client = createApiClient();
+  const user = userEvent.setup();
+  const view = render(<App client={client} />);
+  await user.click(screen.getByRole('button', { name: 'ภาษาไทย' }));
+  expect(await screen.findByRole('heading', { name: 'แดชบอร์ด' })).toBeTruthy();
+  await user.click(await screen.findByRole('link', { name: 'เปิดเคส Scenario one' }));
+  await screen.findByRole('heading', { name: 'ยืนยันการละเมิดแล้ว' });
+  const route = window.location.hash;
+  await user.click(screen.getByRole('button', { name: 'English' }));
+  expect(window.location.hash).toBe(route);
+  expect(screen.getByRole('heading', { name: 'Verified violation' })).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'ภาษาไทย' }));
+  await user.click(screen.getByRole('link', { name: 'ดูรายงาน' }));
+  await screen.findByRole('button', { name: 'พิมพ์ / บันทึก PDF' });
+  view.unmount();
+  render(<App client={client} />);
+  expect(await screen.findByRole('heading', { name: 'รายงานการตรวจสอบ' })).toBeTruthy();
+  expect(document.documentElement.lang).toBe('th');
+  await user.click(screen.getByRole('button', { name: 'English' }));
+  expect(document.documentElement.lang).toBe('en');
+});
