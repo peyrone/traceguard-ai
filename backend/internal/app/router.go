@@ -19,6 +19,7 @@ import (
 // Router builds the same HTTP API for local and serverless entry points.
 func Router(settings config.Config) *echo.Echo {
 	router := echo.New()
+	router.HTTPErrorHandler = handleHTTPError
 	router.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: settings.AllowedOrigins,
 		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodOptions},
