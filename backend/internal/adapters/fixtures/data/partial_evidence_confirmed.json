@@ -1,6 +1,21 @@
 {
   "events": [
     {
+      "event_id": "evt-e-003",
+      "trace_id": "trace-e-001",
+      "transfer_id": "xfer-e-003",
+      "occurred_at": "2026-11-21T03:10:00Z",
+      "observed_at": "2026-11-21T03:10:10Z",
+      "service": "consent-api",
+      "action": "DATA_SENT",
+      "outcome": "COMPLETED",
+      "source_service": "consent-api",
+      "destination_service": "customer-api",
+      "data_ref": "synthetic-subject-e-001",
+      "classification": "PII",
+      "purpose": "CUSTOMER_SERVICE"
+    },
+    {
       "event_id": "evt-e-001",
       "trace_id": "trace-e-001",
       "transfer_id": "xfer-e-001",
@@ -11,6 +26,21 @@
       "outcome": "COMPLETED",
       "source_service": "customer-api",
       "destination_service": "sales-api",
+      "data_ref": "synthetic-subject-e-001",
+      "classification": "PII",
+      "purpose": "CUSTOMER_SERVICE"
+    },
+    {
+      "event_id": "evt-e-004",
+      "trace_id": "trace-e-001",
+      "transfer_id": "xfer-e-004",
+      "occurred_at": "2026-11-21T03:10:02Z",
+      "observed_at": "2026-11-21T03:10:12Z",
+      "service": "sales-api",
+      "action": "DATA_SENT",
+      "outcome": "COMPLETED",
+      "source_service": "sales-api",
+      "destination_service": "case-store",
       "data_ref": "synthetic-subject-e-001",
       "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
@@ -36,7 +66,8 @@
     "classification": "PII",
     "allowed_destinations": [
       "sales-api",
-      "customer-api"
+      "customer-api",
+      "case-store"
     ],
     "allowed_purposes": [
       "CUSTOMER_SERVICE"

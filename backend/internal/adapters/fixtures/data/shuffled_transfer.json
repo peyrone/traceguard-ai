@@ -1,6 +1,21 @@
 {
   "events": [
     {
+      "event_id": "evt-007",
+      "trace_id": "trace-001",
+      "transfer_id": "xfer-007",
+      "occurred_at": "2026-11-21T03:10:06Z",
+      "observed_at": "2026-11-21T03:10:16Z",
+      "service": "case-router",
+      "action": "DATA_SENT",
+      "outcome": "COMPLETED",
+      "source_service": "case-router",
+      "destination_service": "case-store",
+      "data_ref": "synthetic-subject-001",
+      "classification": "PII",
+      "purpose": "CUSTOMER_SERVICE"
+    },
+    {
       "event_id": "evt-003",
       "trace_id": "trace-001",
       "transfer_id": "xfer-003",
@@ -31,6 +46,21 @@
       "purpose": "CUSTOMER_SERVICE"
     },
     {
+      "event_id": "evt-006",
+      "trace_id": "trace-001",
+      "transfer_id": "xfer-006",
+      "occurred_at": "2026-11-21T03:10:05Z",
+      "observed_at": "2026-11-21T03:10:15Z",
+      "service": "sales-api",
+      "action": "DATA_SENT",
+      "outcome": "COMPLETED",
+      "source_service": "sales-api",
+      "destination_service": "case-router",
+      "data_ref": "synthetic-subject-001",
+      "classification": "PII",
+      "purpose": "CUSTOMER_SERVICE"
+    },
+    {
       "event_id": "evt-002",
       "trace_id": "trace-001",
       "transfer_id": "xfer-002",
@@ -44,6 +74,21 @@
       "data_ref": "synthetic-subject-001",
       "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
+    },
+    {
+      "event_id": "evt-005",
+      "trace_id": "trace-001",
+      "transfer_id": "xfer-005",
+      "occurred_at": "2026-11-21T03:10:04Z",
+      "observed_at": "2026-11-21T03:10:14Z",
+      "service": "customer-api",
+      "action": "DATA_SENT",
+      "outcome": "COMPLETED",
+      "source_service": "customer-api",
+      "destination_service": "consent-api",
+      "data_ref": "synthetic-subject-001",
+      "classification": "PII",
+      "purpose": "CUSTOMER_SERVICE"
     }
   ],
   "policy": {
@@ -51,7 +96,10 @@
     "classification": "PII",
     "allowed_destinations": [
       "sales-api",
-      "customer-api"
+      "customer-api",
+      "consent-api",
+      "case-router",
+      "case-store"
     ],
     "allowed_purposes": [
       "CUSTOMER_SERVICE"

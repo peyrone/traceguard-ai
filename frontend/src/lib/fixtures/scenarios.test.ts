@@ -5,16 +5,22 @@ import { scenarioFixtures } from "./scenarios.ts";
 test("shuffled events preserve analysis without sharing input order", () => {
   const direct = scenarioFixtures.unauthorized_transfer;
   const shuffled = scenarioFixtures.shuffled_transfer;
-  assert.notDeepEqual(
-    direct.events.map(({ event_id }) => event_id),
-    shuffled.events.map(({ event_id }) => event_id),
+  assert.notDeepEqual(direct.events, shuffled.events);
+  assert.deepEqual(
+    [...direct.events].sort((a, b) => a.event_id.localeCompare(b.event_id)),
+    [...shuffled.events].sort((a, b) => a.event_id.localeCompare(b.event_id)),
   );
   assert.deepEqual(direct.analysis, shuffled.analysis);
 });
 
-test("fixture findings and edges reference input events and keep inferred links distinct", () => {
-  for (const { analysis, events } of Object.values(scenarioFixtures)) {
+test("all five scenarios have connected service nodes and traceable evidence", () => {
+  assert.equal(Object.keys(scenarioFixtures).length, 5);
+  for (const { scenario, analysis, events } of Object.values(scenarioFixtures)) {
     const eventsById = new Map(events.map((event) => [event.event_id, event]));
+    assert.equal(analysis.summary.events_processed, eventsById.size, scenario.id);
+    assert.ok(analysis.graph.nodes.length >= 5, scenario.id);
+    const endpoints = new Set(analysis.graph.edges.flatMap(({ source, target }) => [source, target]));
+    assert.deepEqual(new Set(analysis.graph.nodes.map(({ id }) => id)), endpoints);
     for (const edge of analysis.graph.edges) {
       assert.ok(edge.evidence_event_ids.length > 0);
       for (const id of edge.evidence_event_ids) assert.ok(eventsById.has(id));
