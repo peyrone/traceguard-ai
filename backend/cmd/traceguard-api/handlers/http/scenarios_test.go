@@ -55,8 +55,19 @@ func TestScenarioPipeline(t *testing.T) {
 		t.Fatalf("unexpected direct transfer result: %+v", direct)
 	}
 	shuffled := analyze("shuffled_transfer")
-	// Candidate IDs are intentionally scenario-scoped. Compare the investigation.
+	// The shuffled fixture has its own event IDs and identifiers derived from them.
 	shuffled.TransferCandidates, direct.TransferCandidates = nil, nil
+	if len(direct.Findings) != 1 || len(shuffled.Findings) != 1 ||
+		shuffled.Findings[0].Id == direct.Findings[0].Id {
+		t.Fatalf("expected distinct finding IDs, got %+v and %+v", direct.Findings, shuffled.Findings)
+	}
+	direct.Findings[0].Id = shuffled.Findings[0].Id
+	direct.Findings[0].EvidenceEventIds = []string{"evt-s-003"}
+	for _, edge := range direct.Graph.Edges {
+		for i, id := range edge.EvidenceEventIds {
+			edge.EvidenceEventIds[i] = "evt-s-" + strings.TrimPrefix(id, "evt-")
+		}
+	}
 	if !reflect.DeepEqual(shuffled, direct) {
 		t.Fatalf("shuffled response differs: %+v", shuffled)
 	}
@@ -69,7 +80,7 @@ func TestScenarioPipeline(t *testing.T) {
 	for _, edge := range missing.Graph.Edges {
 		found = found || edge.Target == "external-crm"
 		if edge.Target == "external-crm" && (edge.EvidenceStatus != api.EdgeEvidenceStatus(entities.Inferred) ||
-			!reflect.DeepEqual(edge.EvidenceEventIds, []string{"evt-001", "evt-004"})) {
+			!reflect.DeepEqual(edge.EvidenceEventIds, []string{"evt-m-001", "evt-004"})) {
 			t.Fatalf("unexpected missing edge: %+v", edge)
 		}
 	}

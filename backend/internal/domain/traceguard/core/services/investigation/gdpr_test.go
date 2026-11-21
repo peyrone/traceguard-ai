@@ -16,9 +16,9 @@ func TestGDPRReviewFixtures(t *testing.T) {
 		articles           []string
 		uncertain          bool
 	}{
-		{"allowed_transfer", "evt-001", nil, false},
+		{"allowed_transfer", "evt-a-001", nil, false},
 		{"unauthorized_transfer", "evt-003", []string{"5(1)(f)", "5(1)(b)"}, false},
-		{"shuffled_transfer", "evt-003", []string{"5(1)(f)", "5(1)(b)"}, false},
+		{"shuffled_transfer", "evt-s-003", []string{"5(1)(f)", "5(1)(b)"}, false},
 		{"missing_intermediate", "evt-004", []string{"5(1)(f)", "5(1)(b)"}, true},
 		{"partial_evidence_confirmed", "evt-e-002", []string{"5(1)(f)"}, false},
 		{"partial_evidence_confirmed", "evt-e-001", nil, true},

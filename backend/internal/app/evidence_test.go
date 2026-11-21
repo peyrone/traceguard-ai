@@ -63,27 +63,23 @@ func TestEvidenceIntegrity(t *testing.T) {
 			}
 			receipt := change(change(change(change(send, "event_id", "receipt"), "action", "DATA_RECEIVED"), "service", "sales-api"), "occurred_at", "2026-11-21T03:10:01Z")
 			t.Run("demo scenarios", func(t *testing.T) {
-				var direct api.AnalyzeResponse
 				for _, scenario := range []struct {
-					id     string
-					status entities.Status
+					id       string
+					status   entities.Status
+					evidence []string
 				}{
-					{"allowed_transfer", entities.NoViolationObserved},
-					{"unauthorized_transfer", entities.VerifiedViolation},
-					{"shuffled_transfer", entities.VerifiedViolation},
-					{"missing_intermediate", entities.PotentialViolation},
+					{"allowed_transfer", entities.NoViolationObserved, []string{"evt-a-001", "evt-a-005", "evt-a-006", "evt-a-007"}},
+					{"unauthorized_transfer", entities.VerifiedViolation, []string{"evt-003"}},
+					{"shuffled_transfer", entities.VerifiedViolation, []string{"evt-s-003"}},
+					{"missing_intermediate", entities.PotentialViolation, []string{"evt-004"}},
 				} {
 					rec := post(t, transport.analyze, "/api/v1/analyze", map[string]any{"scenario_id": scenario.id})
 					var result api.AnalyzeResponse
 					if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil || rec.Code != http.StatusOK || result.Summary.Status != api.Status(scenario.status) {
 						t.Fatalf("%s: %d %s (%v)", scenario.id, rec.Code, rec.Body, err)
 					}
-					result.TransferCandidates = nil // Candidate IDs are scenario-scoped.
-					if scenario.id == "unauthorized_transfer" {
-						direct = result
-					}
-					if scenario.id == "shuffled_transfer" && !reflect.DeepEqual(direct, result) {
-						t.Fatal("shuffled response differs from direct response")
+					if len(result.Findings) != 1 || !slices.Equal(result.Findings[0].EvidenceEventIds, scenario.evidence) {
+						t.Fatalf("%s: unexpected finding evidence: %+v", scenario.id, result.Findings)
 					}
 				}
 			})
