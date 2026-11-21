@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { collectReferences } from '../features/investigation/EvidenceReferences';
@@ -90,13 +90,65 @@ test('late analysis from the previous scenario cannot replace current results', 
   });
   vi.stubGlobal('fetch', fetch);
   render(<App client={createApiClient()} />);
-  await screen.findByText('Analyzing case…');
+  await screen.findByText('Retrieving case analysis…');
   await userEvent.selectOptions(screen.getByLabelText('Investigation case'), 'two');
   await screen.findByRole('heading', { name: 'No violation observed' });
   expect(screen.getByRole('status').textContent).toContain('7 events processed');
   resolveOld({ ok: true, json: async () => analysis });
   await waitFor(() => expect(screen.getByRole('status').textContent).toContain('No violation observed'));
   expect(screen.getByText('Available events do not prove compliance.')).toBeTruthy();
+});
+
+test('changing case during the 500 ms reveal delay discards the previous result', async () => {
+  vi.useFakeTimers();
+  try {
+    mockAPI();
+    const client = createApiClient();
+    const analyze = vi.fn(async () => analysis);
+    await act(async () => { render(<App client={{ ...client, analyze }} />); });
+    const picker = screen.getByLabelText('Investigation case');
+    await act(() => vi.advanceTimersByTimeAsync(400));
+    expect(screen.queryByTestId('highlighted')).toBeNull();
+
+    await act(async () => { fireEvent.change(picker, { target: { value: 'two' } }); });
+    expect(analyze.mock.calls).toHaveLength(2);
+    await act(() => vi.advanceTimersByTimeAsync(499));
+    expect(screen.getByText('Retrieving case analysis…')).toBeTruthy();
+    expect(screen.queryByTestId('highlighted')).toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(screen.getByTestId('highlighted')).toBeTruthy();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('case loading follows the selected request through an error and retry', async () => {
+  mockAPI();
+  const client = createApiClient();
+  const analyze = vi.fn(client.analyze);
+  render(<App client={{ ...client, analyze }} />);
+  await screen.findByTestId('highlighted');
+
+  let fail!: (error: Error) => void;
+  analyze.mockReturnValueOnce(new Promise((_, reject) => { fail = reject; }));
+  const user = userEvent.setup();
+  await user.selectOptions(screen.getByLabelText('Investigation case'), 'two');
+  const result = within(screen.getByRole('region', { name: 'Analysis result' }));
+  const pending = within(result.getByRole('status'));
+  expect(pending.getByText('Retrieving case analysis…')).toBeTruthy();
+  expect(pending.getByText('Scenario two')).toBeTruthy();
+  expect(screen.queryByTestId('highlighted')).toBeNull();
+  fail(new Error('Offline'));
+  expect((await result.findByRole('alert')).textContent).toContain('Offline');
+  expect(result.queryByRole('status')).toBeNull();
+
+  let finish!: (result: Analysis) => void;
+  analyze.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  await user.click(result.getByRole('button', { name: 'Retry analysis' }));
+  expect(result.getByRole('status').textContent).toContain('Scenario two');
+  finish(analysis);
+  await screen.findByTestId('highlighted');
+  expect(result.queryByText('Retrieving case analysis…')).toBeNull();
 });
 
 test('the references table lists each cited ID once, including findings without edges', async () => {
@@ -172,7 +224,7 @@ test('catalog refresh preserves the active case on failure and clears removed ca
   await user.click(screen.getByRole('button', { name: 'Retry case catalog' }));
   await screen.findByRole('option', { name: 'No cases available' });
   expect(screen.queryByTestId('highlighted')).toBeNull();
-  expect(screen.queryByText('Analyzing case…')).toBeNull();
+  expect(screen.queryByText('Retrieving case analysis…')).toBeNull();
 });
 
 test('the explanation separates an observed export from inferred upstream evidence', async () => {

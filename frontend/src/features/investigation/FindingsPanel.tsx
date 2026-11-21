@@ -1,13 +1,9 @@
 import { Icon } from "../../components/Icon";
-import type { AnalysisStatus, Finding } from "../../lib/api/types.ts";
+import type { Finding } from "../../lib/api/types.ts";
 import type { LoadState } from "./state.ts";
 
-export const statusLabels: Record<AnalysisStatus, string> = {
-  VERIFIED_VIOLATION: "Verified violation",
-  POTENTIAL_VIOLATION: "Potential violation",
-  INCONCLUSIVE: "Inconclusive",
-  NO_VIOLATION_OBSERVED: "No violation observed",
-};
+import { FindingStatus } from "./FindingStatus";
+export { statusLabels } from "./FindingStatus";
 
 interface FindingsPanelProps {
   findings: Finding[];
@@ -41,7 +37,7 @@ export function FindingsPanel({
               aria-pressed={selectedFindingId === finding.id}
               onClick={() => onSelectFinding(finding.id)}
             >
-              <strong data-status={finding.status}>{statusLabels[finding.status]}</strong>
+              <FindingStatus status={finding.status} />
               <span>{finding.message}</span>
               <code>{finding.rule_id}</code>
             </button>

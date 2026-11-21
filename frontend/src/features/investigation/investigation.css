@@ -81,3 +81,30 @@
   .references td + td { margin-top: 6px; }
   .mobile-column-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 3px; }
 }
+
+.finding-status { display: inline-flex; align-items: center; gap: 7px; }
+.finding-issue-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 12%, var(--panel));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .finding-issue-icon[data-seen="true"]::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border: 1px solid currentColor;
+    border-radius: inherit;
+    pointer-events: none;
+    animation: finding-ripple 1.1s ease-out 2 both;
+  }
+  @keyframes finding-ripple {
+    from { transform: scale(.8); opacity: .65; }
+    to { transform: scale(1.4); opacity: 0; }
+  }
+}

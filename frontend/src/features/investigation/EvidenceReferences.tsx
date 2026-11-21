@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Finding, Graph, GraphEdge } from '../../lib/api/types';
 
 import { Icon } from '../../components/Icon';
-import { statusLabels } from './FindingsPanel';
+import { FindingStatus } from './FindingStatus';
 import { ServiceRoute } from './ServiceRoute';
 
 export interface EvidenceReference {
@@ -61,7 +61,7 @@ export function EvidenceReferences({ references, graph, selectedFindingId, onIns
             item.edges.map(edge => <ServiceRoute key={edge.id} edge={edge} labels={labels} />)}</td>
           <td><span className="mobile-column-label" aria-hidden="true">Related findings</span>{item.findings.length === 0 ? <span className="muted">No finding cites this ID</span> :
             item.findings.map(finding => <div className="reference-finding" key={finding.id}>
-              <strong data-status={finding.status}>{statusLabels[finding.status]}</strong><code>{finding.rule_id}</code>
+              <FindingStatus status={finding.status} /><code>{finding.rule_id}</code>
             </div>)}</td>
         </tr>)}</tbody>
       </table></div>}

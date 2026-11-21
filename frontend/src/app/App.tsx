@@ -11,6 +11,14 @@ import { NodeDetails } from '../features/lineage/NodeDetails';
 import { getHighlightedEdgeIds } from '../features/lineage/flow-elements';
 import { api, type Analysis, type Explanation, type Scenario } from '../lib/api/client';
 
+const resultRevealDelayMs = 500;
+const resultIcons = {
+  VERIFIED_VIOLATION: 'violation',
+  POTENTIAL_VIOLATION: 'warning',
+  INCONCLUSIVE: 'finding',
+  NO_VIOLATION_OBSERVED: 'shield',
+} as const;
+
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unknown error.';
 }
@@ -32,6 +40,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [explanationError, setExplanationError] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
+  const workspace = useRef<HTMLElement>(null);
   const explanationRequest = useRef<AbortController | null>(null);
 
   const acceptCatalog = useEffectEvent((available: Scenario[]) => {
@@ -66,24 +75,47 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
   useEffect(() => {
     if (!scenarioID) return;
     const controller = new AbortController();
+    let revealTimer: number | undefined;
     async function load() {
       setAnalyzing(true);
       setAnalysisError(null);
       try {
         const result = await client.analyze(scenarioID, controller.signal);
         if (controller.signal.aborted) return;
-        setAnalysis(result);
-        const primaryFinding = result.findings.find(finding => finding.status === result.summary.status);
-        setSelectedFindingId(primaryFinding?.id ?? result.findings[0]?.id ?? null);
+        revealTimer = window.setTimeout(() => {
+          setAnalysis(result);
+          const primaryFinding = result.findings.find(finding => finding.status === result.summary.status);
+          setSelectedFindingId(primaryFinding?.id ?? result.findings[0]?.id ?? null);
+          setAnalyzing(false);
+        }, resultRevealDelayMs);
       } catch (error) {
-        if (!controller.signal.aborted) setAnalysisError(errorMessage(error));
-      } finally {
-        if (!controller.signal.aborted) setAnalyzing(false);
+        if (controller.signal.aborted) return;
+        setAnalysisError(errorMessage(error));
+        setAnalyzing(false);
       }
     }
     void load();
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      window.clearTimeout(revealTimer);
+    };
   }, [scenarioID, retryAnalysis, client]);
+
+  useEffect(() => {
+    if (!analysis || !workspace.current || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('panel-in-view');
+          observer.unobserve(entry.target);
+        }
+      }
+    });
+    for (const panel of workspace.current.querySelectorAll('.surface:not(.panel-in-view)')) {
+      observer.observe(panel);
+    }
+    return () => observer.disconnect();
+  }, [analysis, selectedFindingId]);
 
   useEffect(() => () => explanationRequest.current?.abort(), []);
 
@@ -143,7 +175,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
   return (
     <>
       <WorkspaceHeader hasReferences={Boolean(analysis)} />
-      <main id="workspace">
+      <main id="workspace" ref={workspace}>
         <header className="workspace-intro">
           <div>
             <h1>Investigation workspace</h1>
@@ -175,7 +207,12 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
           </section>
         </header>
         <section className="analysis-state" aria-label="Analysis result">
-          {analyzing && <p role="status">Analyzing case…</p>}
+          {analyzing && <div className="case-download" key={scenarioID} role="status">
+            <span className="case-download-icon" aria-hidden="true"><Icon name="download" size={26} /></span>
+            <div><strong>Retrieving case analysis…</strong>
+              <p>{scenarios.find(item => item.id === scenarioID)?.label ?? scenarioID}</p></div>
+            <span className="case-download-track" aria-hidden="true" />
+          </div>}
           {analysisError && (
             <>
               <p role="alert">Unable to analyze this case. {analysisError}</p>
@@ -183,13 +220,16 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
             </>
           )}
           {analysis && <div className="result-banner" data-status={analysis.summary.status} role="status">
-            <span className="result-symbol" aria-hidden="true">
-              <Icon name="shield" size={34} /><b>{analysis.summary.status === 'NO_VIOLATION_OBSERVED' ? '−' : analysis.summary.status === 'INCONCLUSIVE' ? '?' : '!'}</b>
-            </span>
-            <div><span className="eyebrow">Analysis result</span><h2>{statusLabels[analysis.summary.status]}</h2>
-            {analysis.summary.status === 'NO_VIOLATION_OBSERVED' && <p>Available events do not prove compliance.</p>}</div>
-            <div className="metrics"><span><Icon name="activity" /><b>{analysis.summary.events_processed}</b> events processed</span>
-              <span><Icon name="finding" /><b>{analysis.findings.length}</b> {analysis.findings.length === 1 ? 'finding' : 'findings'}</span></div>
+            <span className="result-symbol"><Icon name={resultIcons[analysis.summary.status]} size={28} /></span>
+            <div className="result-summary">
+              <span className="eyebrow">Analysis result</span>
+              <h2>{statusLabels[analysis.summary.status]}</h2>
+              {analysis.summary.status === 'NO_VIOLATION_OBSERVED' && <p>Available events do not prove compliance.</p>}
+            </div>
+            <div className="result-metrics">
+              <div><Icon name="activity" size={16} /><b>{analysis.summary.events_processed}</b> <span>events processed</span></div>
+              <div><Icon name="finding" size={16} /><b>{analysis.findings.length}</b> <span>{analysis.findings.length === 1 ? 'finding' : 'findings'}</span></div>
+            </div>
           </div>}
         </section>
         {analysis && graph && <>
