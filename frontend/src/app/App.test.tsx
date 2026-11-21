@@ -295,6 +295,8 @@ test('transfer tests display the decision and execution result returned by the A
   vi.stubGlobal('fetch', fetch);
   const user = userEvent.setup();
   render(<App client={createApiClient()} />);
+  await screen.findByRole('heading', { name: 'Verified violation' });
+  await user.selectOptions(screen.getByLabelText('Transfer case'), '0');
   await user.click(screen.getByRole('button', { name: 'Test transfer' }));
   expect(await screen.findByText('ALLOW · Simulation executed')).toBeTruthy();
   await user.selectOptions(screen.getByLabelText('Transfer case'), '1');
@@ -317,6 +319,7 @@ test('the operational case write submits the route and category shown in the pre
     reason: 'The selected privacy policy does not cover every data category.',
   });
   render(<App client={{ ...createApiClient(), decidePrivacy }} />);
+  await screen.findByRole('heading', { name: 'Verified violation' });
   const panel = within(screen.getByRole('region', { name: 'Simulated transfer enforcement' }));
   const user = userEvent.setup();
   await user.selectOptions(panel.getByLabelText('Transfer case'), panel.getByRole('option', { name: 'Operational case write' }));
@@ -328,4 +331,34 @@ test('the operational case write submits the route and category shown in the pre
     source_service: 'case-router', destination_service: 'case-store', data_categories: ['INTERNAL'],
     purpose: 'CUSTOMER_SERVICE', policy_id: 'policy-001',
   }, expect.anything());
+});
+
+test('a verified violation defaults the transfer test to the blocked CRM case', async () => {
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/scenarios')) {
+      return Response.json([{ id: 'allowed', label: 'Allowed flow' }, { id: 'confirmed', label: 'Confirmed violation' }]);
+    }
+    if (url.endsWith('/privacy/decisions')) {
+      return Response.json({ decision: 'DENY', transfer_executed: false, reason: 'Destination denied.', rule_id: 'DENY_EXTERNAL_PII' });
+    }
+    const { scenario_id } = JSON.parse(String(init?.body));
+    return Response.json(scenario_id === 'confirmed' ? analysis : {
+      ...analysis, summary: { status: 'NO_VIOLATION_OBSERVED', events_processed: 1 },
+    });
+  });
+  vi.stubGlobal('fetch', fetch);
+  const user = userEvent.setup();
+  render(<App client={createApiClient()} />);
+  await screen.findByRole('heading', { name: 'No violation observed' });
+  expect((screen.getByLabelText('Transfer case') as HTMLSelectElement).value).toBe('0');
+
+  await user.selectOptions(screen.getByLabelText('Investigation case'), 'confirmed');
+  await screen.findByRole('heading', { name: 'Verified violation' });
+  expect((screen.getByLabelText('Transfer case') as HTMLSelectElement).value).toBe('1');
+  await user.click(screen.getByRole('button', { name: 'Test transfer' }));
+  expect(await screen.findByText('DENY · Blocked before execution')).toBeTruthy();
+  const posted = fetch.mock.calls.find(([url]) => url.endsWith('/privacy/decisions'));
+  expect(JSON.parse(String(posted?.[1]?.body))).toMatchObject({
+    source_service: 'sales-api', destination_service: 'external-crm',
+  });
 });
