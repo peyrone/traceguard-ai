@@ -112,7 +112,7 @@ func (s Service) explain(ctx context.Context, finding entities.Finding, supplied
 		explanation = "Inconclusive. The available evidence is insufficient to determine the policy result."
 	}
 	result := Result{Status: finding.Status, Explanation: explanation, NextSteps: renderSteps(fallbackSteps), EvidenceEventIDs: citations, Mode: "fallback"}
-	if s.provider == nil || ctx.Err() != nil || !knownStatus(finding.Status) {
+	if len(citations) == 0 || s.provider == nil || ctx.Err() != nil || !knownStatus(finding.Status) {
 		return result, nil
 	}
 	start := time.Now()
