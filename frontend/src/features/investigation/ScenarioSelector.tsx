@@ -1,3 +1,4 @@
+import { useLanguage } from '../../lib/language';
 import type { Scenario } from "../../lib/api/types.ts";
 import type { LoadState } from "./state.ts";
 import "./investigation.css";
@@ -15,24 +16,23 @@ export function ScenarioSelector({
   selectedScenarioId,
   state,
 }: ScenarioSelectorProps) {
+  const { t } = useLanguage();
   const unavailable = state?.status === "loading" || state?.status === "error";
   return (
     <div className="tg-scenario">
-      <label>
-        Scenario
-        <select
+      <label>{t("Scenario")}<select
           value={selectedScenarioId}
           defaultValue={selectedScenarioId === undefined ? "" : undefined}
           disabled={unavailable || scenarios.length === 0}
           onChange={(event) => onChange(event.currentTarget.value)}
         >
-          <option value="" disabled>Choose a scenario</option>
-          {scenarios.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+          <option value="" disabled>{t("Choose a scenario")}</option>
+          {scenarios.map(({ id, label }) => <option key={id} value={id}>{t(label)}</option>)}
         </select>
       </label>
-      {state?.status === "loading" && <p role="status">Loading scenarios…</p>}
+      {state?.status === "loading" && <p role="status">{t("Loading scenarios…")}</p>}
       {state?.status === "error" && <p role="alert">{state.message}</p>}
-      {!unavailable && scenarios.length === 0 && <p>No scenarios available.</p>}
+      {!unavailable && scenarios.length === 0 && <p>{t("No scenarios available.")}</p>}
     </div>
   );
 }

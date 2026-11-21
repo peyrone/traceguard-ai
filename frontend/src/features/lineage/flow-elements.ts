@@ -16,7 +16,7 @@ export function getHighlightedEdgeIds(graph: Graph, evidenceEventIds: readonly s
   return graph.edges.filter((edge) => edge.evidence_event_ids.some((id) => evidence.has(id))).map((edge) => edge.id).sort();
 }
 
-export function toFlowElements(graph: Graph, highlightedEdgeIds: readonly string[] = [], vertical = false): { nodes: Node[]; edges: Edge[] } {
+export function toFlowElements(graph: Graph, highlightedEdgeIds: readonly string[] = [], vertical = false, t: (text: string) => string = text => text): { nodes: Node[]; edges: Edge[] } {
   const highlighted = new Set(highlightedEdgeIds);
   const endpoints = new Set(graph.edges.filter((edge) => highlighted.has(edge.id)).flatMap((edge) => [edge.source, edge.target]));
   const ordered = [...graph.nodes].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -49,7 +49,7 @@ export function toFlowElements(graph: Graph, highlightedEdgeIds: readonly string
       id,
       selected: endpoints.has(id),
       type: 'service',
-      data: { name: label, kind, label: kind === 'external' ? `${label} · External` : label },
+      data: { name: label, kind, label: kind === 'external' ? `${label} · ${t('External')}` : label },
       className: kind === 'external' ? 'lineage-node--external' : undefined,
       position: vertical
         ? { x: row * 215 + (column % 2) * 40, y: column * 140 }
@@ -61,7 +61,7 @@ export function toFlowElements(graph: Graph, highlightedEdgeIds: readonly string
 
   const edges: Edge[] = graph.edges.map((edge) => {
     const observed = edge.evidence_status === 'OBSERVED';
-    const status = observed ? 'Observed' : 'Inferred';
+    const status = t(observed ? 'Observed' : 'Inferred');
     const label = [status, ...edge.evidence_event_ids].join(' · ');
 
     return {

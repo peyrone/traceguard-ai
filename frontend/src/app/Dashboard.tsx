@@ -1,3 +1,4 @@
+import { useLanguage } from '../lib/language';
 import { useEffect, useState } from 'react';
 import { caseHref } from './navigation';
 import { Icon } from '../components/Icon';
@@ -19,13 +20,15 @@ interface Props {
 }
 
 function CaseActions({ scenario }: { scenario: Scenario }) {
+  const { t } = useLanguage();
   return <div className="case-actions">
-    <a href={caseHref('workspace', scenario.id)} aria-label={'Open case ' + scenario.label}>Open case <Icon name="route" size={15} /></a>
-    <a href={caseHref('report', scenario.id)} aria-label={'View report for ' + scenario.label}>View report</a>
+    <a href={caseHref('workspace', scenario.id)} aria-label={t("Open case") + ' ' + t(scenario.label)}>{t("Open case")} <Icon name="route" size={15} /></a>
+    <a href={caseHref('report', scenario.id)} aria-label={t("View report for") + ' ' + t(scenario.label)}>{t("View report")}</a>
   </div>;
 }
 
 export default function Dashboard({ scenarios, client, listing, listError, onRefresh, unavailableCase, showAll, onShowAll }: Props) {
+  const { language, t } = useLanguage();
   const [snapshot, setSnapshot] = useState<{ catalog: Scenario[]; rows: CaseRow[]; checked: Date }>();
   useEffect(() => {
     if (!scenarios.length) return;
@@ -63,34 +66,34 @@ export default function Dashboard({ scenarios, client, listing, listError, onRef
 
   return <main id="dashboard" className="overview-page">
     <header className="workspace-intro">
-      <div><h1>Dashboard</h1><p>{checked.length > 0
-        ? <><strong>{needsReview.length} of {checked.length}</strong> analyzed cases need review.</>
-        : 'Monitor case status and transfer evidence.'}</p></div>
-      <button className="overview-action" disabled={busy} onClick={onRefresh}><Icon name="refresh" size={17} />Refresh cases</button>
+      <div><h1>{t("Dashboard")}</h1><p>{checked.length > 0
+        ? <><strong>{needsReview.length} {t("of")} {checked.length}</strong> {t("analyzed cases need review.")}</>
+        : t("Monitor case status and transfer evidence.")}</p></div>
+      <button className="overview-action" disabled={busy} onClick={onRefresh}><Icon name="refresh" size={17} />{t("Refresh cases")}</button>
     </header>
-    {unavailableCase && <p role="alert" className="overview-note">Case <code>{unavailableCase}</code> is unavailable. Choose a case from the dashboard.</p>}
-    {listError && <p role="alert" className="overview-note">Case catalog unavailable. {listError}{scenarios.length > 0 && ' Showing the last fetched list.'}</p>}
-    {busy && <p role="status" className="overview-note">Checking cases…</p>}
+    {unavailableCase && <p role="alert" className="overview-note">{t("Case")} <code>{unavailableCase}</code> {t("is unavailable. Choose a case from the dashboard.")}</p>}
+    {listError && <p role="alert" className="overview-note">{t("Case catalog unavailable.")} {t(listError)}{scenarios.length > 0 && ' ' + t("Showing the last fetched list.")}</p>}
+    {busy && <p role="status" className="overview-note">{t("Checking cases…")}</p>}
     {current && <div className="overview-grid">
       <DashboardCharts cases={ordered} />
-      <section className="surface review-queue"><header className="panel-heading queue-heading"><h2><Icon name="finding" />Review queue <span className="queue-count">{queue.length}</span></h2>
-        <label><input type="checkbox" checked={showAll} onChange={event => onShowAll(event.target.checked)} /> Include cases without violations</label></header>
-        {queue.length === 0 && <p className="inset">{checked.length ? 'No analyzed cases need investigation.' : 'No analyses available.'}</p>}
+      <section className="surface review-queue"><header className="panel-heading queue-heading"><h2><Icon name="finding" />{t("Review queue")} <span className="queue-count">{queue.length}</span></h2>
+        <label><input type="checkbox" checked={showAll} onChange={event => onShowAll(event.target.checked)} /> {t("Include cases without violations")}</label></header>
+        {queue.length === 0 && <p className="inset">{checked.length ? t("No analyzed cases need investigation.") : t("No analyses available.")}</p>}
         <ul className="case-queue">{queue.map(({ scenario, analysis: result }) => {
           const primary = result.findings.find(f => f.status === result.summary.status) ?? result.findings[0];
           return <li key={scenario.id}>
             <div className="queue-case">
-              <h3>{scenario.label}</h3>
-              <p>{primary?.message ?? 'Available events do not prove compliance.'}</p>
+              <h3>{t(scenario.label)}</h3>
+              <p>{t(primary?.message ?? "Available events do not prove compliance.")}</p>
             </div>
-            <span className="review-status" data-status={result.summary.status}>{statusLabels[result.summary.status]}</span>
+            <span className="review-status" data-status={result.summary.status}>{t(statusLabels[result.summary.status])}</span>
             <CaseActions scenario={scenario} />
           </li>;
         })}</ul>
       </section>
-      <p className="overview-meta">Checked <time dateTime={current.checked.toISOString()}>{current.checked.toLocaleTimeString()}</time> · {checked.length} of {scenarios.length} cases analyzed · Refreshes every minute</p>
+      <p className="overview-meta">{t("Checked")} <time dateTime={current.checked.toISOString()}>{current.checked.toLocaleTimeString(language)}</time> · {checked.length} {t("of")} {scenarios.length} {t("cases analyzed · Refreshes every minute")}</p>
     </div>}
-    {missing.length > 0 && <div className="overview-note" role="alert"><strong>Analysis unavailable</strong><ul className="case-queue">{missing.map(({ scenario }) => <li key={scenario.id}><strong>{scenario.label}</strong><CaseActions scenario={scenario} /></li>)}</ul></div>}
-    {!busy && !listError && !scenarios.length && <p className="overview-note">No cases in the catalog.</p>}
+    {missing.length > 0 && <div className="overview-note" role="alert"><strong>{t("Analysis unavailable")}</strong><ul className="case-queue">{missing.map(({ scenario }) => <li key={scenario.id}><strong>{t(scenario.label)}</strong><CaseActions scenario={scenario} /></li>)}</ul></div>}
+    {!busy && !listError && !scenarios.length && <p className="overview-note">{t("No cases in the catalog.")}</p>}
   </main>;
 }

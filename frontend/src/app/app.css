@@ -338,3 +338,19 @@ dialog::backdrop { background: #17102190; }
   .report-block h3, .report-finding h4, .report-finding h5 { break-after: avoid; }
   .report-edges li { break-inside: avoid; }
 }
+
+.language-toggle {
+  min-height: 44px;
+  padding-inline: 12px;
+  background: transparent;
+  border-color: #776a88;
+  color: #ede5f7;
+  font-size: 14px;
+}
+.language-toggle:hover { background: #ffffff12; }
+:lang(th):is(h1, h2, h3, figcaption) { letter-spacing: normal; line-height: 1.4; }
+@media (max-width: 620px) {
+  .nav-inner { gap: 4px 8px; padding-block: 8px; }
+  .language-toggle { margin-left: auto; }
+  .nav-inner .data-source { order: 1; flex-basis: 100%; max-width: none; }
+}
