@@ -1,5 +1,7 @@
 # TraceGuard AI
 
+[Live demo](https://traceguard-ai-ui.vercel.app/) · [GitHub Pages](https://peyrone.github.io/traceguard-ai/)
+
 TraceGuard AI reconstructs service-to-service data lineage from synthetic audit events and flags transfers that may breach a privacy policy. The graph and findings cite supporting audit event IDs and show where evidence is missing.
 
 **We built TraceGuard AI from scratch on 21 November 2026 during the Sea × OpenAI Regional Codex Hackathon Thailand.** We wrote all project-specific frontend and backend code during the event. We did not build on any existing application, starter template, or prior work, whether open source or proprietary. The app uses public libraries as dependencies.
