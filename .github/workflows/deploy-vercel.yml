@@ -58,7 +58,8 @@ jobs:
         # Vercel applies the selected project's Root Directory from the repo root.
         run: |
           vercel pull --yes --environment=production
-          vercel build --prod
+          # Include the Go executables in the prebuilt output instead of referencing runner temp files.
+          vercel build --prod --standalone
           vercel deploy --prebuilt --prod
 
   smoke-api:
