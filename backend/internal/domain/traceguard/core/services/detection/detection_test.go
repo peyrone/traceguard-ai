@@ -12,16 +12,16 @@ import (
 )
 
 func TestDemoScenarios(t *testing.T) {
-	var direct []entities.Finding
+	var direct entities.Finding
 	for _, tc := range []struct {
 		id       string
 		want     entities.Status
-		evidence string
+		evidence []string
 	}{
-		{"allowed_transfer", entities.NoViolationObserved, "evt-001"},
-		{"unauthorized_transfer", entities.VerifiedViolation, "evt-003"},
-		{"shuffled_transfer", entities.VerifiedViolation, "evt-003"},
-		{"missing_intermediate", entities.PotentialViolation, "evt-004"},
+		{"allowed_transfer", entities.NoViolationObserved, []string{"evt-a-001", "evt-a-005", "evt-a-006", "evt-a-007"}},
+		{"unauthorized_transfer", entities.VerifiedViolation, []string{"evt-003"}},
+		{"shuffled_transfer", entities.VerifiedViolation, []string{"evt-s-003"}},
+		{"missing_intermediate", entities.PotentialViolation, []string{"evt-004"}},
 	} {
 		t.Run(tc.id, func(t *testing.T) {
 			input, policy, err := (fixtures.Store{}).Load(t.Context(), tc.id)
@@ -30,14 +30,18 @@ func TestDemoScenarios(t *testing.T) {
 			}
 			events, graph := (lineage.Service{}).Reconstruct(input)
 			got, err := (detection.Evaluator{}).Detect(t.Context(), events, graph, policy)
-			if err != nil || len(got) != 1 || got[0].Status != tc.want || !reflect.DeepEqual(got[0].EvidenceEventIDs, []string{tc.evidence}) {
+			if err != nil || len(got) != 1 || got[0].Status != tc.want || !reflect.DeepEqual(got[0].EvidenceEventIDs, tc.evidence) {
 				t.Fatalf("findings=%+v err=%v", got, err)
 			}
 			if tc.id == "unauthorized_transfer" {
-				direct = got
+				direct = got[0]
 			}
-			if tc.id == "shuffled_transfer" && !reflect.DeepEqual(direct, got) {
-				t.Fatalf("shuffled findings = %+v, want %+v", got, direct)
+			if tc.id == "shuffled_transfer" {
+				direct.ID = got[0].ID
+				direct.EvidenceEventIDs = tc.evidence
+				if !reflect.DeepEqual(direct, got[0]) {
+					t.Fatalf("shuffled finding = %+v, want %+v", got[0], direct)
+				}
 			}
 		})
 	}

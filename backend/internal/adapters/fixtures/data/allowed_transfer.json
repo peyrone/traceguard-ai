@@ -1,7 +1,7 @@
 {
   "events": [
     {
-      "event_id": "evt-001",
+      "event_id": "evt-a-001",
       "trace_id": "trace-001",
       "transfer_id": "xfer-001",
       "occurred_at": "2026-11-21T03:10:01Z",
@@ -16,7 +16,7 @@
       "purpose": "CUSTOMER_SERVICE"
     },
     {
-      "event_id": "evt-005",
+      "event_id": "evt-a-005",
       "trace_id": "trace-001",
       "transfer_id": "xfer-005",
       "occurred_at": "2026-11-21T03:10:04Z",
@@ -27,11 +27,11 @@
       "source_service": "customer-api",
       "destination_service": "consent-api",
       "data_ref": "synthetic-ops-001",
-      "classification": "INTERNAL",
+      "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
     },
     {
-      "event_id": "evt-006",
+      "event_id": "evt-a-006",
       "trace_id": "trace-001",
       "transfer_id": "xfer-006",
       "occurred_at": "2026-11-21T03:10:05Z",
@@ -42,11 +42,11 @@
       "source_service": "sales-api",
       "destination_service": "case-router",
       "data_ref": "synthetic-ops-001",
-      "classification": "INTERNAL",
+      "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
     },
     {
-      "event_id": "evt-007",
+      "event_id": "evt-a-007",
       "trace_id": "trace-001",
       "transfer_id": "xfer-007",
       "occurred_at": "2026-11-21T03:10:06Z",
@@ -57,7 +57,7 @@
       "source_service": "case-router",
       "destination_service": "case-store",
       "data_ref": "synthetic-ops-001",
-      "classification": "INTERNAL",
+      "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
     }
   ],
@@ -66,7 +66,10 @@
     "classification": "PII",
     "allowed_destinations": [
       "sales-api",
-      "customer-api"
+      "customer-api",
+      "consent-api",
+      "case-router",
+      "case-store"
     ],
     "allowed_purposes": [
       "CUSTOMER_SERVICE"

@@ -30,10 +30,13 @@ func (s *server) CreatePrivacyDecision(c echo.Context) error {
 
 	ctx := c.Request().Context()
 	var policy *entities.Policy
-	// Keep the original server-owned policy for legacy explicit requests.
-	if request.PolicyID == "policy-001" && s.fixtures != nil {
-		if _, loaded, err := s.fixtures.Load(ctx, "allowed_transfer"); err == nil {
-			policy = &loaded
+	// Explicit requests retain their original allowlist. Scenario requests
+	// resolve the policy from the selected fixture instead.
+	if request.PolicyID == "policy-001" {
+		policy = &entities.Policy{
+			PolicyID: "policy-001", Classification: "PII",
+			AllowedDestinations: []string{"sales-api", "customer-api"},
+			AllowedPurposes:     []string{"CUSTOMER_SERVICE"},
 		}
 	}
 	return privacyResponse(c, enforcement.Simulate(ctx, request, policy))

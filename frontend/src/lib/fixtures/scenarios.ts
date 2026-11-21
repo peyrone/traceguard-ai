@@ -100,7 +100,7 @@ const caseRouting = completedSend({ suffix: "006", second: 5, source: sales, tar
 const caseWrite = completedSend({ suffix: "007", second: 6, source: caseRouter, target: caseStore });
 const approvedBranches = [consentSend, caseRouting, caseWrite];
 const operationalEvents = approvedBranches.map((event) => ({
-  ...event, data_ref: "synthetic-ops-001", classification: "INTERNAL",
+  ...event, data_ref: "synthetic-ops-001",
 }));
 const caseTemplate = { ...allowedEvent, data_ref: "synthetic-case-001" };
 const unrelatedCaseRouting = completedSend({
