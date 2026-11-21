@@ -1,7 +1,9 @@
+import { useLanguage } from '../../lib/language';
 import type { GraphEdge } from '../../lib/api/types';
 import { Icon } from '../../components/Icon';
 
 export function ServiceRoute({ edge, labels }: { edge: GraphEdge; labels: Map<string, string> }) {
+  const { t } = useLanguage();
   const observed = edge.evidence_status === 'OBSERVED';
   return <div className="service-route">
     <span className="route-endpoints">
@@ -10,7 +12,7 @@ export function ServiceRoute({ edge, labels }: { edge: GraphEdge; labels: Map<st
       <span className="sr-only"> → </span><span className="route-stop">{labels.get(edge.target) ?? edge.target}</span>
     </span>
     <span className="route-type" data-inferred={!observed}>
-      {observed ? 'Observed transfer' : 'Inferred link'}
+      {observed ? t("Observed transfer") : t("Inferred link")}
     </span>
   </div>;
 }

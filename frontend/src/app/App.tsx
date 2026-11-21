@@ -1,3 +1,4 @@
+import { LanguageProvider, useLanguage } from '../lib/language';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { TransferTestPanel } from '../features/enforcement/TransferTestPanel';
@@ -28,6 +29,11 @@ function errorMessage(error: unknown) {
 }
 
 export default function App({ client = api }: { client?: typeof api } = {}) {
+  return <LanguageProvider><InvestigationApp client={client} /></LanguageProvider>;
+}
+
+function InvestigationApp({ client }: { client: typeof api }) {
+  const { t } = useLanguage();
   const [showAll, setShowAll] = useState(false);
   const [route, setRoute] = useState(readRoute);
   useEffect(() => {
@@ -64,17 +70,17 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
 
   const scenario = route.section === 'dashboard' ? undefined : scenarios.find(item => item.id === route.caseId);
   useEffect(() => {
-    const page = route.section === 'report' ? 'Report' : 'Workspace';
-    document.title = (scenario ? scenario.label + ' · ' + page : 'Dashboard') + ' · TraceGuard AI';
-  }, [route.section, scenario]);
+    const page = route.section === 'report' ? t("Report") : t("Workspace");
+    document.title = (scenario ? t(scenario.label) + ' · ' + page : t("Dashboard")) + ' · TraceGuard AI';
+  }, [route.section, scenario, t]);
   if (route.section !== 'dashboard') {
     if (scenario) return <CaseView key={scenario.id} scenario={scenario} section={route.section} client={client} />;
-    if (listing) return <><WorkspaceHeader /><main><p role="status">Loading case catalog…</p></main></>;
+    if (listing) return <><WorkspaceHeader /><main><p role="status">{t("Loading case catalog…")}</p></main></>;
   }
 
   return <>
     <WorkspaceHeader />
-    <Suspense fallback={<main><p role="status">Loading dashboard…</p></main>}>
+    <Suspense fallback={<main><p role="status">{t("Loading dashboard…")}</p></main>}>
       <Dashboard showAll={showAll} onShowAll={setShowAll} scenarios={scenarios} client={client} listing={listing} listError={listError} onRefresh={refreshCatalog}
         unavailableCase={route.section !== 'dashboard' && !listError ? route.caseId : undefined} />
     </Suspense>
@@ -82,6 +88,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
 }
 
 function CaseView({ scenario, section, client }: { scenario: Scenario; section: CaseSection; client: typeof api }) {
+  const { t } = useLanguage();
   const scenarioID = scenario.id;
   const report = section === 'report';
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -198,45 +205,45 @@ function CaseView({ scenario, section, client }: { scenario: Scenario; section: 
       <main id={report ? "report" : "workspace"} ref={workspace}>
         <header className="workspace-intro">
           <div>
-            <a className="back-to-cases" href="#dashboard">← Back to dashboard</a>
-            <h1>{report ? "Investigation report" : "Investigation workspace"}</h1>
-            <p className="case-identity"><strong>{scenario.label}</strong><code>{scenarioID}</code></p>
+            <a className="back-to-cases" href="#dashboard">{t("← Back to dashboard")}</a>
+            <h1>{report ? t("Investigation report") : t("Investigation workspace")}</h1>
+            <p className="case-identity"><strong>{t(scenario.label)}</strong><code>{scenarioID}</code></p>
           </div>
           <div className="case-page-links">
             {!report && analysis && <a href={caseHref('references', scenarioID)}
-              onClick={() => { if (section === 'references') document.getElementById('references')?.scrollIntoView?.(); }}>Evidence references</a>}
+              onClick={() => { if (section === 'references') document.getElementById('references')?.scrollIntoView?.(); }}>{t("Evidence references")}</a>}
             <a className="case-page-action" href={caseHref(report ? 'workspace' : 'report', scenarioID)}>
-              {report ? 'Open case' : 'View report'} <Icon name="route" size={16} />
+              {report ? t("Open case") : t("View report")} <Icon name="route" size={16} />
             </a>
           </div>
         </header>
-        <section className="analysis-state" aria-label="Analysis result">
+        <section className="analysis-state" aria-label={t("Analysis result")}>
           {analyzing && <div className="case-download" key={scenarioID} role="status">
             <span className="case-download-icon" aria-hidden="true"><Icon name="download" size={26} /></span>
-            <div><strong>Retrieving case analysis…</strong>
-              <p>{scenario.label}</p></div>
+            <div><strong>{t("Retrieving case analysis…")}</strong>
+              <p>{t(scenario.label)}</p></div>
             <span className="case-download-track" aria-hidden="true" />
           </div>}
           {analysisError && (
             <>
-              <p role="alert">Unable to analyze this case. {analysisError}</p>
-              <button type="button" disabled={analyzing} onClick={analyzeScenario}>Retry analysis</button>
+              <p role="alert">{t("Unable to analyze this case.")} {t(analysisError)}</p>
+              <button type="button" disabled={analyzing} onClick={analyzeScenario}>{t("Retry analysis")}</button>
             </>
           )}
           {!report && analysis && <div className="result-banner" data-status={analysis.summary.status} role="status">
             <span className="result-symbol"><Icon name={resultIcons[analysis.summary.status]} size={28} /></span>
             <div className="result-summary">
-              <span className="eyebrow">Analysis result</span>
-              <h2>{statusLabels[analysis.summary.status]}</h2>
-              {analysis.summary.status === 'NO_VIOLATION_OBSERVED' && <p>Available events do not prove compliance.</p>}
+              <span className="eyebrow">{t("Analysis result")}</span>
+              <h2>{t(statusLabels[analysis.summary.status])}</h2>
+              {analysis.summary.status === 'NO_VIOLATION_OBSERVED' && <p>{t("Available events do not prove compliance.")}</p>}
             </div>
             <div className="result-metrics">
-              <div><Icon name="activity" size={16} /><b>{analysis.summary.events_processed}</b> <span>events processed</span></div>
-              <div><Icon name="finding" size={16} /><b>{analysis.findings.length}</b> <span>{analysis.findings.length === 1 ? 'finding' : 'findings'}</span></div>
+              <div><Icon name="activity" size={16} /><b>{analysis.summary.events_processed}</b> <span>{t("events processed")}</span></div>
+              <div><Icon name="finding" size={16} /><b>{analysis.findings.length}</b> <span>{analysis.findings.length === 1 ? t("finding") : t("findings")}</span></div>
             </div>
           </div>}
         </section>
-        {report && analysis && <Suspense fallback={<p role="status">Loading report…</p>}>
+        {report && analysis && <Suspense fallback={<p role="status">{t("Loading report…")}</p>}>
           <Report key={scenarioID} caseId={scenarioID} label={scenario.label}
             client={client} analysis={analysis} />
         </Suspense>}
@@ -254,8 +261,8 @@ function CaseView({ scenario, section, client }: { scenario: Scenario; section: 
               }}
             />
             <section className="graph-panel surface" aria-labelledby="graph-title">
-              <header className="panel-heading"><h2 id="graph-title"><Icon name="network" />Service lineage</h2><span>{graph.nodes.length} services</span></header>
-              <Suspense fallback={<p className="inset" role="status">Loading service lineage…</p>}>
+              <header className="panel-heading"><h2 id="graph-title"><Icon name="network" />{t("Service lineage")}</h2><span>{graph.nodes.length} {t("services")}</span></header>
+              <Suspense fallback={<p className="inset" role="status">{t("Loading service lineage…")}</p>}>
                 <LineageGraph graph={graph} selectedFindingId={selectedFindingId} onSelectNode={setSelectedNodeId} highlightedEdgeIds={highlightedEdgeIds} />
               </Suspense>
               <LinkComposition edges={graph.edges} />

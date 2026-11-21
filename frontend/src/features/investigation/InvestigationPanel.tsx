@@ -1,3 +1,4 @@
+import { useLanguage } from '../../lib/language';
 import { useState, type ReactNode } from "react";
 import type { ExplainResponse, Finding, Graph } from "../../lib/api/types.ts";
 import { EvidencePanel } from "./EvidencePanel.tsx";
@@ -45,6 +46,7 @@ export function UpstreamEvidence({ graph, finding, findings }: {
   finding: Finding;
   findings: Finding[];
 }) {
+  const { t } = useLanguage();
   const outboundSources = new Set(graph?.edges
     .filter((edge) => finding.status === "VERIFIED_VIOLATION" && edge.evidence_status === "OBSERVED" &&
       edge.evidence_event_ids.some((id) => finding.evidence_event_ids.includes(id)))
@@ -56,13 +58,13 @@ export function UpstreamEvidence({ graph, finding, findings }: {
     upstreamLinks.some((edge) => edge.evidence_event_ids.some((id) => item.evidence_event_ids.includes(id))));
   const nodeLabels = new Map(graph?.nodes.map(({ id, label }) => [id, label]));
   return relatedFindings.length > 0 ? (
-    <section aria-label="Separate upstream finding">
-      <h3>Separate upstream finding</h3>
-      <p>The shared service leaves the data’s upstream origin unresolved.</p>
+    <section aria-label={t("Separate upstream finding")}>
+      <h3>{t("Separate upstream finding")}</h3>
+      <p>{t("The shared service leaves the data’s upstream origin unresolved.")}</p>
       <ul className="tg-detail-list">
         {relatedFindings.map((item) => (
           <li key={item.id}>
-            <strong>Inconclusive · Inferred link</strong>
+            <strong>{t("Inconclusive · Inferred link")}</strong>
             {upstreamLinks.filter((edge) => edge.evidence_event_ids.some((id) => item.evidence_event_ids.includes(id)))
               .map((edge) => <span key={edge.id}> {nodeLabels.get(edge.source) ?? edge.source} → {nodeLabels.get(edge.target) ?? edge.target}</span>)}
             <span> · {item.evidence_event_ids.map((id) => <code key={id}>{id} </code>)}</span>
