@@ -8,6 +8,7 @@
 |---|---|---|---|
 | GET | `/api/v1/scenarios` | List available synthetic scenarios | BE1 |
 | POST | `/api/v1/analyze` | From events + policy to graph and findings | BE1 integrates BE2 |
+| POST | `/api/v1/report-summary` | Generate a case report for an audience in English or Thai | BE1 + BE2 / FE1 + FE2 |
 | POST | `/api/v1/explain` | Explain selected finding from supplied safe evidence | BE2 |
 
 | POST | `/api/v1/privacy/decisions` | Evaluate a demo policy and conditionally execute a synthetic transfer | BE1 integrates enforcement and FE2 |
@@ -100,6 +101,12 @@ Response for the example:
 ```
 
 A valid JSON request returns HTTP 200 with `ALLOW`, `DENY`, or `INDETERMINATE`. Missing decision attributes, uncovered categories, or unavailable policy return `INDETERMINATE` and block the simulation. `transfer_executed` is true only after the synthetic executor produces a receipt. Malformed or incorrectly typed requests return HTTP 400 with the standard error envelope.
+
+## `POST /api/v1/report-summary`
+
+Send `{"scenario_id":"partial_evidence_confirmed","audience":"executive","language":"th"}`. Supported audiences are `executive` and `engineering`. Languages are `en` and `th`. The server loads its scenario and policy, runs the same analysis as the workspace, and echoes these three request fields with the canonical `status`, `mode`, and ordered `sections`. Each section has a `kind` (conclusion, uncertainty, route, action), localized `text`, an array of `evidence_event_ids`, and optionally a `rule_id`.
+
+Both editions retain the evaluator verdict. The executive edition identifies a decision and suggested owner. Engineering includes observed and inferred links with their citations. AI may prioritize approved follow-ups from redacted evidence. Missing configuration, provider failure or invalid suggestions produce HTTP 200 with deterministic `mode: fallback`. Malformed requests return 400, unknown cases 404, and analysis failures 500 with the standard error envelope.
 
 ## Frontend component contracts
 

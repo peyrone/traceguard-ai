@@ -59,6 +59,41 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AnalyzeRequest'
+  /api/v1/report-summary:
+    post:
+      operationId: CreateReportSummary
+      description: Generate a localized edition from the server-owned scenario and policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportSummaryRequest'
+      responses:
+        '200':
+          description: Validated summary or deterministic fallback
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSummary'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Unknown scenario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Could not analyze the scenario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/explain:
     post:
       operationId: Explain
@@ -119,6 +154,41 @@ paths:
                 $ref: '#/components/schemas/Error'
 components:
   schemas:
+    ReportAudience:
+      type: string
+      enum: [executive, engineering]
+    ReportLanguage:
+      type: string
+      enum: [en, th]
+    ReportSummaryRequest:
+      type: object
+      additionalProperties: false
+      required: [scenario_id, audience, language]
+      properties:
+        scenario_id: {type: string, minLength: 1}
+        audience: {$ref: '#/components/schemas/ReportAudience'}
+        language: {$ref: '#/components/schemas/ReportLanguage'}
+    ReportSummary:
+      type: object
+      required: [scenario_id, audience, language, status, mode, sections]
+      properties:
+        scenario_id: {type: string}
+        audience: {$ref: '#/components/schemas/ReportAudience'}
+        language: {$ref: '#/components/schemas/ReportLanguage'}
+        status: {$ref: '#/components/schemas/Status'}
+        mode: {type: string, enum: [ai, fallback]}
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportSection'
+    ReportSection:
+      type: object
+      required: [kind, text, evidence_event_ids]
+      properties:
+        kind: {type: string, enum: [conclusion, uncertainty, route, action]}
+        text: {type: string}
+        evidence_event_ids: {type: array, items: {type: string}}
+        rule_id: {type: string}
     PrivacyDecisionRequest:
       type: object
       description: Send scenario_id and candidate_id together for a server-resolved fixture transfer. Otherwise use the legacy explicit attributes. Missing attributes in the applicable evidence can return INDETERMINATE.
