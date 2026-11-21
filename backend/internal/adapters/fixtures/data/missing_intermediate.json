@@ -1,0 +1,45 @@
+{
+  "events": [
+    {
+      "event_id": "evt-001",
+      "trace_id": "trace-001",
+      "transfer_id": "xfer-001",
+      "occurred_at": "2026-11-21T03:10:01Z",
+      "observed_at": "2026-11-21T03:10:30Z",
+      "service": "customer-api",
+      "action": "DATA_SENT",
+      "outcome": "COMPLETED",
+      "source_service": "customer-api",
+      "destination_service": "sales-api",
+      "data_ref": "synthetic-subject-001",
+      "classification": "PII",
+      "purpose": "CUSTOMER_SERVICE"
+    },
+    {
+      "event_id": "evt-004",
+      "trace_id": "trace-001",
+      "transfer_id": "xfer-004",
+      "occurred_at": "2026-11-21T03:10:04Z",
+      "observed_at": "2026-11-21T03:10:14Z",
+      "service": "external-crm",
+      "action": "DATA_RECEIVED",
+      "outcome": "COMPLETED",
+      "source_service": "",
+      "destination_service": "external-crm",
+      "data_ref": "synthetic-subject-001",
+      "classification": "PII",
+      "purpose": "MARKETING"
+    }
+  ],
+  "policy": {
+    "policy_id": "policy-001",
+    "classification": "PII",
+    "allowed_destinations": [
+      "sales-api",
+      "customer-api"
+    ],
+    "allowed_purposes": [
+      "CUSTOMER_SERVICE"
+    ]
+  }
+}
