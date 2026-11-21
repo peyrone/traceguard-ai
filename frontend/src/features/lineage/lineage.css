@@ -1,46 +1,41 @@
-.lineage-canvas {
-  height: clamp(320px, 52vh, 500px);
-  background: #f7fafb;
-}
-
+.lineage-canvas { height: clamp(250px, 31vh, 340px); }
+.lineage-canvas .react-flow { background-color: #241d30; }
 .lineage-canvas .react-flow__node {
-  border-color: #a7bcb8;
+  width: 165px;
+  background: #382d47;
+  color: #f5effa;
+  border: 1.5px solid #91809f;
   border-radius: 8px;
-  color: #16352e;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 650;
+  padding: 14px 10px;
 }
-
-.lineage-canvas .lineage-node--external {
-  background: #fff4df;
-  border-color: #c89e5f;
-  color: #654517;
+.service-kind { display: flex; gap: 6px; align-items: center; color: #dccaf1; font: 12px var(--mono); text-transform: capitalize; margin-bottom: 5px; }
+.lineage-node--external .service-kind { color: #ffdcad; }
+.lineage-canvas .lineage-node--external { background: #3a3037; border-color: #cc9f65; color: #ffdcad; }
+.lineage-canvas .react-flow__node:is(.selected, :focus-visible) { outline: 2px solid #ddc9f8; outline-offset: 3px; }
+.lineage-canvas .react-flow__edge .react-flow__edge-path { stroke: #b4a7c6; stroke-width: 2; }
+.lineage-canvas .lineage-edge--inferred .react-flow__edge-path { stroke-dasharray: 6 4; }
+.lineage-canvas .react-flow__edge.selected .react-flow__edge-path { stroke: #e3c9ff; stroke-width: 4; }
+.lineage-canvas .react-flow__edge-textbg { fill: #241d30; }
+.lineage-canvas .react-flow__edge-text { fill: #f4ecff; font-size: 12px; font-weight: 600; }
+.lineage-canvas .react-flow__controls { display: flex; flex-direction: row; }
+.lineage-canvas .react-flow__controls-button { width: 44px; height: 44px; min-height: 44px; border: 1px solid #786786; background: #392f45; color: #fff; }
+.lineage-canvas .react-flow__controls-button svg { fill: currentColor; }
+.lineage-empty, .node-details { padding: 14px 20px; }
+.graph-legend { display: flex; gap: 20px; padding: 10px 20px; color: var(--muted); font-size: 14px; }
+.graph-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.graph-legend span::before { content: ''; width: 20px; border-top: 2px solid var(--accent); }
+.graph-legend span + span::before { border-top-style: dashed; }
+.node-details { display: grid; gap: 7px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.node-details label { font-weight: 650; font-size: 14px; }
+.node-details select { width: 100%; }
+.service-ids { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.service-info ul { margin: 8px 0 0; padding-left: 20px; }
+.service-info li + li { margin-top: 8px; }
+@media (max-width: 650px) { .lineage-canvas { height: 410px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .lineage-canvas .react-flow__edge-path { transition: stroke 160ms, stroke-width 160ms; }
+  .service-info { animation: show-service 180ms ease-out; }
+  @keyframes show-service { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 }
-
-.lineage-canvas .react-flow__node:focus-visible {
-  outline: 3px solid #21675c;
-  outline-offset: 4px;
-}
-
-.lineage-edge--observed .react-flow__edge-path {
-  stroke: #21675c;
-  stroke-width: 2;
-}
-
-.lineage-edge--inferred .react-flow__edge-path {
-  stroke: #725427;
-  stroke-width: 2;
-  stroke-dasharray: 6 4;
-}
-
-.lineage-canvas .react-flow__edge-text {
-  font-weight: 650;
-}
-
-.lineage-empty {
-  margin: 0;
-  padding: 24px;
-}
-
-.lineage-canvas .react-flow__node.selected { outline: 3px solid #21675c; outline-offset: 4px; }
-.lineage-canvas .react-flow__edge.selected .react-flow__edge-path { stroke-width: 4; }

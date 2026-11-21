@@ -51,7 +51,7 @@ export function FindingsPanel({
   }
   return (
     <section className="tg-investigation-panel" aria-label="Findings">
-      <h2>Findings</h2>
+      <header className="panel-heading"><h2>Finding details</h2><span>{findings.length} {findings.length === 1 ? "finding" : "findings"}</span></header>
       {content}
     </section>
   );

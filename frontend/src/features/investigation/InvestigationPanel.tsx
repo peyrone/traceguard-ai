@@ -13,19 +13,30 @@ interface InvestigationProps {
   onSelectFinding: (id: string) => void;
   selectedFindingId?: string | null;
   graph?: Graph;
+  onInspect?: (id: string) => void;
   state?: LoadState;
 }
 
+interface ControlledExplanationProps {
+  onExplain: () => void;
+  explanation: ExplainResponse | null;
+  explanationError: string | null;
+  explaining: boolean;
+  onInspect?: (id: string) => void;
+}
+
 type InvestigationPanelProps = InvestigationProps & (
-  | {
-      onExplain: () => void;
-      explanation: ExplainResponse | null;
-      explanationError: string | null;
-      explaining: boolean;
-      requestExplanation?: never;
-    }
+  | (ControlledExplanationProps & { requestExplanation?: never })
   | { onExplain?: never; requestExplanation?: RequestExplanation }
 );
+
+export function ControlledExplanation(props: ControlledExplanationProps) {
+  let state: Parameters<typeof ExplanationContent>[0]["state"];
+  if (props.explaining) state = { status: "loading" };
+  else if (props.explanationError !== null) state = { status: "error", message: props.explanationError };
+  else if (props.explanation !== null) state = { status: "ready", result: props.explanation };
+  return <ExplanationContent state={state} onExplain={props.onExplain} onInspect={props.onInspect} />;
+}
 
 export function InvestigationPanel(props: InvestigationPanelProps) {
   const { findings, onSelectFinding, selectedFindingId, graph, requestExplanation, state } = props;
@@ -38,34 +49,28 @@ export function InvestigationPanel(props: InvestigationPanelProps) {
 
   let explanationPanel;
   if (finding !== null && props.onExplain !== undefined) {
-    let explanationState: Parameters<typeof ExplanationContent>[0]["state"];
-    if (props.explaining) {
-      explanationState = { status: "loading" };
-    } else if (props.explanationError !== null) {
-      explanationState = { status: "error", message: props.explanationError };
-    } else if (props.explanation !== null) {
-      explanationState = { status: "ready", result: props.explanation };
-    }
-    explanationPanel = <ExplanationContent state={explanationState} onExplain={props.onExplain} />;
+    explanationPanel = <ControlledExplanation key={finding.id} {...props} />;
   } else if (finding !== null && requestExplanation !== undefined) {
     explanationPanel = <ExplanationPanel finding={finding} onRequest={requestExplanation} />;
   }
 
   return (
-    <div className={props.onExplain === undefined ? "tg-investigation" : "investigation-panel tg-investigation"}>
-      <FindingsPanel
-        findings={findings}
-        onSelectFinding={(id) => {
-          if (selectedFindingId === undefined) {
-            setLocalSelection(findings.find((item) => item.id === id) ?? null);
-          }
-          onSelectFinding(id);
-        }}
-        selectedFindingId={finding?.id}
-        state={state}
-      />
-      {ready && findings.length > 0 && <EvidencePanel finding={finding} graph={graph} />}
+    <>
+      <div className="surface inspector">
+        <FindingsPanel
+          findings={findings}
+          onSelectFinding={(id) => {
+            if (selectedFindingId === undefined) {
+              setLocalSelection(findings.find((item) => item.id === id) ?? null);
+            }
+            onSelectFinding(id);
+          }}
+          selectedFindingId={finding?.id}
+          state={state}
+        />
+        {ready && findings.length > 0 && <EvidencePanel finding={finding} graph={graph} onInspect={props.onInspect} />}
+      </div>
       {explanationPanel}
-    </div>
+    </>
   );
 }

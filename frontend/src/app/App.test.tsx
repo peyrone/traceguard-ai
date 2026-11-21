@@ -1,7 +1,8 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
+import { collectReferences } from '../features/investigation/EvidenceReferences';
 import { createApiClient, type Analysis } from '../lib/api/client';
 
 // Exercise app composition without relying on canvas geometry in jsdom.
@@ -44,10 +45,11 @@ test('automatic analysis drives highlights and evidence remains inspectable with
   expect((await screen.findByTestId('highlighted')).textContent).toBe('ab');
   expect(screen.getByRole('list', { name: 'Related graph edges' }).textContent).toContain('Service A → Service B');
   await user.selectOptions(screen.getByLabelText('Inspect service evidence'), 'a');
-  expect(screen.getByText('Supporting event IDs: evt-003')).toBeTruthy();
+  expect(within(screen.getByRole('region', { name: 'Service evidence' })).getByRole('button', { name: 'evt-003' })).toBeTruthy();
   await user.click(screen.getByRole('button', { name: /UNMATCHED/ }));
   expect(screen.getByTestId('highlighted').textContent).toBe('');
-  expect(screen.getByText('evt-unknown')).toBeTruthy();
+  const evidence = within(screen.getByRole('region', { name: 'Evidence' }));
+  expect(evidence.getByRole('button', { name: 'evt-unknown' })).toBeTruthy();
   expect(screen.queryByRole('list', { name: 'Related graph edges' })).toBeNull();
 });
 
@@ -90,8 +92,43 @@ test('late analysis from the previous scenario cannot replace current results', 
   render(<App client={createApiClient()} />);
   await screen.findByText('Analyzing scenario…');
   await userEvent.selectOptions(screen.getByLabelText('Scenario'), 'two');
-  await screen.findByText('No violation observed · 7 events processed');
+  await screen.findByRole('heading', { name: 'No violation observed' });
+  expect(screen.getByRole('status').textContent).toContain('7 events processed');
   resolveOld({ ok: true, json: async () => analysis });
-  await waitFor(() => expect(screen.queryByText('Verified violation · 1 events processed')).toBeNull());
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('No violation observed'));
   expect(screen.getByText('Available events do not prove compliance.')).toBeTruthy();
+});
+
+test('the references table lists each cited ID once, including findings without edges', async () => {
+  mockAPI();
+  render(<App client={createApiClient()} />);
+  const region = within(await screen.findByRole('region', { name: 'Evidence references' }));
+  expect(region.getAllByRole('row')).toHaveLength(3);
+  expect(region.getByRole('button', { name: 'evt-003' })).toBeTruthy();
+  expect(region.getByRole('button', { name: 'evt-unknown' })).toBeTruthy();
+});
+
+test('the shared reference index retains all associations and includes edge-only IDs', () => {
+  const edge = analysis.graph.edges[0];
+  const second = { ...edge, id: 'second', evidence_event_ids: ['evt-003', 'evt-003', 'edge-only'] };
+  const entries = collectReferences({ ...analysis.graph, edges: [edge, second] }, analysis.findings);
+  expect(entries.map(entry => [entry.id, entry.edges.map(item => item.id), entry.findings.map(item => item.id)])).toEqual([
+    ['edge-only', ['second'], []],
+    ['evt-003', ['ab', 'second'], ['finding']],
+    ['evt-unknown', [], ['unmatched']],
+  ]);
+});
+
+test('an explanation error leaves finding evidence available and can be retried', async () => {
+  const fetch = mockAPI();
+  const user = userEvent.setup();
+  render(<App client={createApiClient()} />);
+  const explain = await screen.findByRole('button', { name: 'Explain finding' });
+  fetch.mockRejectedValueOnce(new Error('Explanation unavailable'));
+  await user.click(explain);
+  expect((await screen.findByRole('alert')).textContent).toContain('Explanation unavailable');
+  const evidence = within(screen.getByRole('region', { name: 'Evidence' }));
+  expect(evidence.getByRole('button', { name: 'evt-003' })).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Retry explanation' }));
+  expect(await screen.findByText('Rule-based fallback')).toBeTruthy();
 });
