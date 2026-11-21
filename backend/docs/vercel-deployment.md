@@ -57,12 +57,12 @@ printf '%s\n' "$analysis" | jq '.summary, .findings[0]'
 printf '%s\n' "$analysis" | jq '{
   finding: .findings[0],
   rule_summary: "PII transfers require an allowed destination and purpose.",
-  evidence: [{event_id:"evt-003"}]
+  evidence: [{event_id:"evt-u-003"}]
 }' | curl --fail-with-body "$api/api/v1/explain" \
   -H "Origin: $ui" -H 'Content-Type: application/json' --data-binary @-
 ```
 
 Expect health `{"status":"ok"}`, four scenarios, the configured CORS origin,
-and a verified finding citing `evt-003`. Explain should cite the same ID and
+and a verified finding citing `evt-u-003`. Explain should cite the same ID and
 return `mode: "fallback"` with AI unset. Open the UI and select each scenario
 to confirm browser requests and graph rendering.

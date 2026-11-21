@@ -87,7 +87,7 @@ func TestFixtureExplanation(t *testing.T) {
 		scenario, event, transfer, gap, action, rejected string
 		status                                           entities.Status
 	}{
-		{"missing_intermediate", "evt-004", "INFERRED", "completed_send", "collect_completed_send", "review_export", entities.PotentialViolation},
+		{"missing_intermediate", "evt-m-004", "INFERRED", "completed_send", "collect_completed_send", "review_export", entities.PotentialViolation},
 		{"partial_evidence_confirmed", "evt-e-001", "INFERRED", "completed_send", "collect_completed_send", "review_export", entities.Inconclusive},
 		{"partial_evidence_confirmed", "evt-e-002", "OBSERVED", "", "review_export", "collect_completed_send", entities.VerifiedViolation},
 		{"shuffled_transfer", "evt-s-003", "OBSERVED", "", "review_export", "collect_completed_send", entities.VerifiedViolation},

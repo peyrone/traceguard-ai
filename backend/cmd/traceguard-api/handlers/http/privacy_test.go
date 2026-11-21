@@ -76,10 +76,10 @@ func TestScenarioPrivacyDecisionHTTP(t *testing.T) {
 		{"allowed_transfer", "evt-a-005", "customer-api", "consent-api", "PII", "CUSTOMER_SERVICE", api.ALLOW},
 		{"allowed_transfer", "evt-a-006", "sales-api", "case-router", "PII", "CUSTOMER_SERVICE", api.ALLOW},
 		{"allowed_transfer", "evt-a-007", "case-router", "case-store", "PII", "CUSTOMER_SERVICE", api.ALLOW},
-		{"unauthorized_transfer", "evt-003", "sales-api", "external-crm", "PII", "MARKETING", api.DENY},
-		{"unauthorized_transfer", "evt-006", "sales-api", "case-router", "PII", "CUSTOMER_SERVICE", api.ALLOW},
+		{"unauthorized_transfer", "evt-u-003", "sales-api", "external-crm", "PII", "MARKETING", api.DENY},
+		{"unauthorized_transfer", "evt-u-006", "sales-api", "case-router", "PII", "CUSTOMER_SERVICE", api.ALLOW},
 		{"shuffled_transfer", "evt-s-003", "sales-api", "external-crm", "PII", "MARKETING", api.DENY},
-		{"missing_intermediate", "evt-004", "sales-api", "external-crm", "", "", api.INDETERMINATE},
+		{"missing_intermediate", "evt-m-004", "sales-api", "external-crm", "", "", api.INDETERMINATE},
 		{"partial_evidence_confirmed", "evt-e-001", "customer-api", "sales-api", "", "", api.INDETERMINATE},
 		{"partial_evidence_confirmed", "evt-e-002", "sales-api", "external-crm", "PII", "CUSTOMER_SERVICE", api.DENY},
 	} {

@@ -65,7 +65,7 @@ func TestScenarioPipeline(t *testing.T) {
 	direct.Findings[0].EvidenceEventIds = []string{"evt-s-003"}
 	for _, edge := range direct.Graph.Edges {
 		for i, id := range edge.EvidenceEventIds {
-			edge.EvidenceEventIds[i] = "evt-s-" + strings.TrimPrefix(id, "evt-")
+			edge.EvidenceEventIds[i] = "evt-s-" + strings.TrimPrefix(id, "evt-u-")
 		}
 	}
 	if !reflect.DeepEqual(shuffled, direct) {
@@ -80,12 +80,12 @@ func TestScenarioPipeline(t *testing.T) {
 	for _, edge := range missing.Graph.Edges {
 		found = found || edge.Target == "external-crm"
 		if edge.Target == "external-crm" && (edge.EvidenceStatus != api.EdgeEvidenceStatus(entities.Inferred) ||
-			!reflect.DeepEqual(edge.EvidenceEventIds, []string{"evt-m-001", "evt-004"})) {
+			!reflect.DeepEqual(edge.EvidenceEventIds, []string{"evt-m-001", "evt-m-004"})) {
 			t.Fatalf("unexpected missing edge: %+v", edge)
 		}
 	}
 	if !found || len(missing.Findings) != 1 || missing.Findings[0].Status != api.Status(entities.PotentialViolation) ||
-		!reflect.DeepEqual(missing.Findings[0].EvidenceEventIds, []string{"evt-004"}) || len(missing.Findings[0].MissingEvidence) == 0 {
+		!reflect.DeepEqual(missing.Findings[0].EvidenceEventIds, []string{"evt-m-004"}) || len(missing.Findings[0].MissingEvidence) == 0 {
 		t.Fatalf("missing inferred evidence or finding: %+v", missing)
 	}
 
