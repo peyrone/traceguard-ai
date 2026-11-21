@@ -118,18 +118,18 @@ jobs:
           finding=$(jq -ce '
             select(.summary.status == "VERIFIED_VIOLATION")
             | first(.findings[] | select(.status == "VERIFIED_VIOLATION"
-              and (.evidence_event_ids | index("evt-003") != null)))
+              and (.evidence_event_ids | index("evt-u-003") != null)))
           ' <<< "$analysis")
 
           echo 'Checking explanation evidence'
           jq -c '{
             finding: .,
             rule_summary: "PII transfers require an allowed destination and purpose.",
-            evidence: [{event_id: "evt-003"}]
+            evidence: [{event_id: "evt-u-003"}]
           }' <<< "$finding" |
             curl "${curl_args[@]}" "$api/api/v1/explain" \
               -H "Origin: $ui" -H 'Content-Type: application/json' --data-binary @- |
-            jq -e '.evidence_event_ids | index("evt-003") != null' >/dev/null
+            jq -e '.evidence_event_ids | index("evt-u-003") != null' >/dev/null
 
   deploy-ui:
     if: github.ref == 'refs/heads/main'
