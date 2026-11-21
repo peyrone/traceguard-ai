@@ -1,10 +1,11 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
+import { TransferTestPanel } from '../features/enforcement/TransferTestPanel';
 import { Icon } from '../components/Icon';
 import { LinkComposition } from '../features/lineage/LinkComposition';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import { collectReferences, EvidenceReferences, ReferenceDialog } from '../features/investigation/EvidenceReferences';
-import { ControlledExplanation, InvestigationPanel, statusLabels } from '../features/investigation/InvestigationPanel';
+import { ControlledExplanation, InvestigationPanel, UpstreamEvidence, statusLabels } from '../features/investigation/InvestigationPanel';
 import { LineageGraph } from '../features/lineage/LineageGraph';
 import { NodeDetails } from '../features/lineage/NodeDetails';
 import { getHighlightedEdgeIds } from '../features/lineage/flow-elements';
@@ -211,6 +212,8 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
             </section>
             {selectedFinding && <ControlledExplanation
               key={selectedFinding.id}
+              finding={selectedFinding}
+              relatedEvidence={<UpstreamEvidence graph={graph} finding={selectedFinding} findings={analysis.findings} />}
               explanation={explanation}
               explanationError={explanationError}
               explaining={explaining}
@@ -221,6 +224,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
           <EvidenceReferences graph={graph} selectedFindingId={selectedFindingId} references={references} onInspect={setReferenceId} />
           {selectedReference && <ReferenceDialog item={selectedReference} graph={graph} onClose={() => setReferenceId(null)} />}
         </>}
+        <TransferTestPanel decide={client.decidePrivacy} />
       </main>
     </>
   );

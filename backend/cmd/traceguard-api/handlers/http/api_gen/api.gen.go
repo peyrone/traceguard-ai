@@ -28,6 +28,13 @@ const (
 	Fallback ExplainResponseMode = "fallback"
 )
 
+// Defines values for PrivacyDecisionResponseDecision.
+const (
+	ALLOW         PrivacyDecisionResponseDecision = "ALLOW"
+	DENY          PrivacyDecisionResponseDecision = "DENY"
+	INDETERMINATE PrivacyDecisionResponseDecision = "INDETERMINATE"
+)
+
 // Defines values for Status.
 const (
 	INCONCLUSIVE        Status = "INCONCLUSIVE"
@@ -153,6 +160,28 @@ type Policy struct {
 	PolicyId            string   `json:"policy_id"`
 }
 
+// PrivacyDecisionRequest The attributes required to reach a decision are optional on the wire so omitted attributes can return INDETERMINATE.
+type PrivacyDecisionRequest struct {
+	DataCategories     *[]string `json:"data_categories,omitempty"`
+	DestinationService *string   `json:"destination_service,omitempty"`
+	PolicyId           *string   `json:"policy_id,omitempty"`
+	Purpose            *string   `json:"purpose,omitempty"`
+	SourceService      *string   `json:"source_service,omitempty"`
+}
+
+// PrivacyDecisionResponse defines model for PrivacyDecisionResponse.
+type PrivacyDecisionResponse struct {
+	Decision PrivacyDecisionResponseDecision `json:"decision"`
+	Reason   string                          `json:"reason"`
+	RuleId   string                          `json:"rule_id"`
+
+	// TransferExecuted True only when the synthetic executor produced a receipt. Always false for DENY or INDETERMINATE.
+	TransferExecuted bool `json:"transfer_executed"`
+}
+
+// PrivacyDecisionResponseDecision defines model for PrivacyDecisionResponse.Decision.
+type PrivacyDecisionResponseDecision string
+
 // Scenario defines model for Scenario.
 type Scenario struct {
 	Id    string `json:"id"`
@@ -174,6 +203,9 @@ type AnalyzeJSONRequestBody = AnalyzeRequest
 // ExplainJSONRequestBody defines body for Explain for application/json ContentType.
 type ExplainJSONRequestBody = ExplainRequest
 
+// CreatePrivacyDecisionJSONRequestBody defines body for CreatePrivacyDecision for application/json ContentType.
+type CreatePrivacyDecisionJSONRequestBody = PrivacyDecisionRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
@@ -182,6 +214,9 @@ type ServerInterface interface {
 
 	// (POST /api/v1/explain)
 	Explain(ctx echo.Context) error
+
+	// (POST /api/v1/privacy/decisions)
+	CreatePrivacyDecision(ctx echo.Context) error
 
 	// (GET /api/v1/scenarios)
 	ListScenarios(ctx echo.Context) error
@@ -210,6 +245,15 @@ func (w *ServerInterfaceWrapper) Explain(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.Explain(ctx)
+	return err
+}
+
+// CreatePrivacyDecision converts echo context to params.
+func (w *ServerInterfaceWrapper) CreatePrivacyDecision(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreatePrivacyDecision(ctx)
 	return err
 }
 
@@ -261,6 +305,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.POST(baseURL+"/api/v1/analyze", wrapper.Analyze)
 	router.POST(baseURL+"/api/v1/explain", wrapper.Explain)
+	router.POST(baseURL+"/api/v1/privacy/decisions", wrapper.CreatePrivacyDecision)
 	router.GET(baseURL+"/api/v1/scenarios", wrapper.ListScenarios)
 	router.GET(baseURL+"/healthz", wrapper.Healthz)
 

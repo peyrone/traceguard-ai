@@ -1,6 +1,7 @@
 package tracehttp
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -86,19 +87,23 @@ func (s *server) Analyze(c echo.Context) error {
 		}
 		policy = entities.Policy{PolicyID: p.PolicyId, Classification: p.Classification, AllowedDestinations: p.AllowedDestinations, AllowedPurposes: p.AllowedPurposes}
 	}
+	events, graph, findings, err := s.analyze(ctx, events, policy)
+	if err != nil {
+		return fail(c, http.StatusInternalServerError, "ANALYSIS_FAILED", "Could not evaluate the policy.")
+	}
+	return c.JSON(http.StatusOK, response(len(events), graph, findings))
+}
+
+func (s *server) analyze(ctx context.Context, events []entities.Event, policy entities.Policy) ([]entities.Event, entities.Graph, []entities.Finding, error) {
 	var graph entities.Graph
 	if s.lineage != nil {
 		events, graph = s.lineage.Reconstruct(events)
 	}
-	var findings []entities.Finding
-	if s.detector != nil {
-		var err error
-		findings, err = s.detector.Detect(ctx, events, graph, policy)
-		if err != nil {
-			return fail(c, http.StatusInternalServerError, "ANALYSIS_FAILED", "Could not evaluate the policy.")
-		}
+	if s.detector == nil {
+		return events, graph, nil, nil
 	}
-	return c.JSON(http.StatusOK, response(len(events), graph, findings))
+	findings, err := s.detector.Detect(ctx, events, graph, policy)
+	return events, graph, findings, err
 }
 
 func response(count int, graph entities.Graph, findings []entities.Finding) api.AnalyzeResponse {

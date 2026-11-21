@@ -1,11 +1,13 @@
 import { createExplainRequest, evidenceIdsForRequest } from "./explanation.ts";
-import { isAnalyzeResponse, isErrorResponse, isExplainResponse, isScenarioList } from "./response.ts";
-import type { Finding, TraceGuardClient } from "./types.ts";
+import { isAnalyzeResponse, isErrorResponse, isExplainResponse, isPrivacyDecisionResponse, isScenarioList } from "./response.ts";
+import type { Finding, PrivacyDecisionRequest, PrivacyDecisionResponse, TraceGuardClient } from "./types.ts";
 
 export type { AnalysisStatus as Status, AnalyzeResponse as Analysis, ExplainResponse as Explanation, Finding, Scenario } from "./types.ts";
 
 type Endpoint = "scenarios" | "analyze" | "explain";
 const configuredBaseURL = import.meta.env?.VITE_API_BASE_URL?.trim() ?? "";
+// Leave transport headroom above the Go provider’s five-second maximum.
+const explanationDeadlineMs = 6_000;
 const localBaseURL = "http://localhost:8080";
 export const hasConfiguredBackend = configuredBaseURL !== "";
 
@@ -38,7 +40,7 @@ interface ClientOptions {
 export function createTraceGuardClient({
   baseUrl = "",
   fetch: fetchRequest = globalThis.fetch.bind(globalThis),
-}: ClientOptions = {}): TraceGuardClient {
+}: ClientOptions = {}): TraceGuardClient & { decidePrivacy(input: PrivacyDecisionRequest, signal?: AbortSignal): Promise<PrivacyDecisionResponse> } {
   const prefix = versionedBaseURL(baseUrl);
 
   async function request<T>(
@@ -68,8 +70,16 @@ export function createTraceGuardClient({
   return {
     listScenarios: (signal) => request("/scenarios", isScenarioList, signal),
     analyze: (input, signal) => request("/analyze", isAnalyzeResponse, signal, input),
+    decidePrivacy: (input, signal) => request("/privacy/decisions", isPrivacyDecisionResponse, signal, input),
     async explain(input, signal) {
-      const result = await request("/explain", isExplainResponse, signal, input);
+      const deadline = AbortSignal.timeout(explanationDeadlineMs);
+      const requestSignal = signal ? AbortSignal.any([signal, deadline]) : deadline;
+      const result = await request("/explain", isExplainResponse, requestSignal, input).catch((error: unknown) => {
+        if (deadline.aborted && !signal?.aborted) {
+          throw new Error("The explanation request timed out. Try again.");
+        }
+        throw error;
+      });
       const knownIds = new Set(evidenceIdsForRequest(input));
       if (result.evidence_event_ids.some((id) => !knownIds.has(id))) {
         throw new Error("Explanation cited an unknown evidence event ID.");
@@ -83,6 +93,7 @@ export function createApiClient(baseURL = configuredBaseURL) {
   const client = createTraceGuardClient({ baseUrl: baseURL.trim() || localBaseURL });
   return {
     listScenarios: client.listScenarios,
+    decidePrivacy: client.decidePrivacy,
     analyze: (scenarioID: string, signal: AbortSignal) =>
       client.analyze({ scenario_id: scenarioID }, signal),
     explain: (finding: Finding, signal: AbortSignal) =>

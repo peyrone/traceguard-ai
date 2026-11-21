@@ -6,6 +6,7 @@ import type {
   GraphEdge,
   GraphNode,
   Scenario,
+  PrivacyDecisionResponse,
 } from "./types.ts";
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -65,4 +66,12 @@ export function isExplainResponse(value: unknown): value is ExplainResponse {
 
 export function isErrorResponse(value: unknown): value is { code: string; message: string } {
   return isObject(value) && isString(value.code) && isString(value.message);
+}
+
+export function isPrivacyDecisionResponse(value: unknown): value is PrivacyDecisionResponse {
+  return isObject(value) &&
+    (value.decision === "ALLOW" || value.decision === "DENY" || value.decision === "INDETERMINATE") &&
+    isString(value.rule_id) && isString(value.reason) &&
+    typeof value.transfer_executed === "boolean" &&
+    (value.decision === "ALLOW" || !value.transfer_executed);
 }

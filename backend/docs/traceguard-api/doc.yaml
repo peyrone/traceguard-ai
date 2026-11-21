@@ -82,8 +82,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/v1/privacy/decisions:
+    post:
+      operationId: CreatePrivacyDecision
+      description: Evaluate a trusted demo policy and run only the synthetic transfer executor when the decision is ALLOW. No customer data is transferred. The result is separate from historical audit evidence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrivacyDecisionRequest'
+      responses:
+        '200':
+          description: Decision and synthetic execution result. Missing decision attributes or an unavailable policy yield INDETERMINATE.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivacyDecisionResponse'
+        '400':
+          description: Malformed or incorrectly typed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
+    PrivacyDecisionRequest:
+      type: object
+      description: The attributes required to reach a decision are optional on the wire so omitted attributes can return INDETERMINATE.
+      properties:
+        source_service:
+          type: string
+        destination_service:
+          type: string
+        data_categories:
+          type: array
+          items:
+            type: string
+        purpose:
+          type: string
+        policy_id:
+          type: string
+    PrivacyDecisionResponse:
+      type: object
+      required: [decision, rule_id, reason, transfer_executed]
+      properties:
+        decision:
+          type: string
+          enum: [ALLOW, DENY, INDETERMINATE]
+        rule_id:
+          type: string
+        reason:
+          type: string
+        transfer_executed:
+          type: boolean
+          description: True only when the synthetic executor produced a receipt. Always false for DENY or INDETERMINATE.
     Health:
       type: object
       properties:
