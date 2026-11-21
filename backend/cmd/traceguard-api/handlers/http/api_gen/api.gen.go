@@ -11,8 +11,8 @@ import (
 
 // Defines values for EdgeEvidenceStatus.
 const (
-	INFERRED EdgeEvidenceStatus = "INFERRED"
-	OBSERVED EdgeEvidenceStatus = "OBSERVED"
+	EdgeEvidenceStatusINFERRED EdgeEvidenceStatus = "INFERRED"
+	EdgeEvidenceStatusOBSERVED EdgeEvidenceStatus = "OBSERVED"
 )
 
 // Defines values for EventOutcome.
@@ -43,6 +43,12 @@ const (
 	VERIFIEDVIOLATION   Status = "VERIFIED_VIOLATION"
 )
 
+// Defines values for TransferCandidateEvidenceStatus.
+const (
+	TransferCandidateEvidenceStatusINFERRED TransferCandidateEvidenceStatus = "INFERRED"
+	TransferCandidateEvidenceStatusOBSERVED TransferCandidateEvidenceStatus = "OBSERVED"
+)
+
 // AnalyzeRequest Use scenario_id alone or a non-null events array with policy. An empty events array is accepted with scenario_id for compatibility with the blueprint example. A supplied policy overrides the scenario policy.
 type AnalyzeRequest struct {
 	Events     *[]Event `json:"events,omitempty"`
@@ -55,6 +61,9 @@ type AnalyzeResponse struct {
 	Findings []Finding `json:"findings"`
 	Graph    Graph     `json:"graph"`
 	Summary  Summary   `json:"summary"`
+
+	// TransferCandidates Scenario-scoped redacted candidates for fixture-backed analysis with the server-owned policy. Omitted for custom events or policy overrides.
+	TransferCandidates *[]TransferCandidate `json:"transfer_candidates,omitempty"`
 }
 
 // Edge defines model for Edge.
@@ -160,12 +169,14 @@ type Policy struct {
 	PolicyId            string   `json:"policy_id"`
 }
 
-// PrivacyDecisionRequest The attributes required to reach a decision are optional on the wire so omitted attributes can return INDETERMINATE.
+// PrivacyDecisionRequest Send scenario_id and candidate_id together for a server-resolved fixture transfer. Otherwise use the legacy explicit attributes. Missing attributes in the applicable evidence can return INDETERMINATE.
 type PrivacyDecisionRequest struct {
+	CandidateId        *string   `json:"candidate_id,omitempty"`
 	DataCategories     *[]string `json:"data_categories,omitempty"`
 	DestinationService *string   `json:"destination_service,omitempty"`
 	PolicyId           *string   `json:"policy_id,omitempty"`
 	Purpose            *string   `json:"purpose,omitempty"`
+	ScenarioId         *string   `json:"scenario_id,omitempty"`
 	SourceService      *string   `json:"source_service,omitempty"`
 }
 
@@ -196,6 +207,25 @@ type Summary struct {
 	EventsProcessed int    `json:"events_processed"`
 	Status          Status `json:"status"`
 }
+
+// TransferCandidate Redacted evidence for one historical transfer or inferred relationship. Only the server can resolve a candidate into a simulated request.
+type TransferCandidate struct {
+	// Classification Omitted when the selected evidence does not establish the transfer classification.
+	Classification     *string                         `json:"classification,omitempty"`
+	DestinationService string                          `json:"destination_service"`
+	EdgeId             string                          `json:"edge_id"`
+	EvidenceEventIds   []string                        `json:"evidence_event_ids"`
+	EvidenceStatus     TransferCandidateEvidenceStatus `json:"evidence_status"`
+	Id                 string                          `json:"id"`
+	PolicyId           string                          `json:"policy_id"`
+
+	// Purpose Omitted when the selected evidence does not establish the transfer purpose.
+	Purpose       *string `json:"purpose,omitempty"`
+	SourceService string  `json:"source_service"`
+}
+
+// TransferCandidateEvidenceStatus defines model for TransferCandidate.EvidenceStatus.
+type TransferCandidateEvidenceStatus string
 
 // AnalyzeJSONRequestBody defines body for Analyze for application/json ContentType.
 type AnalyzeJSONRequestBody = AnalyzeRequest

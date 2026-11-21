@@ -105,12 +105,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '404':
+          description: Unknown scenario or candidate outside the selected scenario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     PrivacyDecisionRequest:
       type: object
-      description: The attributes required to reach a decision are optional on the wire so omitted attributes can return INDETERMINATE.
+      description: Send scenario_id and candidate_id together for a server-resolved fixture transfer. Otherwise use the legacy explicit attributes. Missing attributes in the applicable evidence can return INDETERMINATE.
       properties:
+        scenario_id:
+          type: string
+        candidate_id:
+          type: string
         source_service:
           type: string
         destination_service:
@@ -301,6 +311,28 @@ components:
       - message
       - evidence_event_ids
       - missing_evidence
+    TransferCandidate:
+      type: object
+      description: Redacted evidence for one historical transfer or inferred relationship. Only the server can resolve a candidate into a simulated request.
+      required: [id, edge_id, source_service, destination_service, evidence_status, evidence_event_ids, policy_id]
+      properties:
+        id: *id001
+        edge_id: *id001
+        source_service: *id001
+        destination_service: *id001
+        evidence_status:
+          type: string
+          enum: [OBSERVED, INFERRED]
+        evidence_event_ids:
+          type: array
+          items: *id001
+        classification:
+          type: string
+          description: Omitted when the selected evidence does not establish the transfer classification.
+        purpose:
+          type: string
+          description: Omitted when the selected evidence does not establish the transfer purpose.
+        policy_id: *id001
     AnalyzeResponse:
       type: object
       properties:
@@ -308,6 +340,11 @@ components:
           $ref: '#/components/schemas/Summary'
         graph:
           $ref: '#/components/schemas/Graph'
+        transfer_candidates:
+          type: array
+          description: Scenario-scoped redacted candidates for fixture-backed analysis with the server-owned policy. Omitted for custom events or policy overrides.
+          items:
+            $ref: '#/components/schemas/TransferCandidate'
         findings:
           type: array
           items:

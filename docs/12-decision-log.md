@@ -11,4 +11,6 @@
 
 | 2026-11-21 | Release captain approved additive privacy decision contract and dedicated contract PR | Demonstrate preventive enforcement with a synthetic executor | BE1 server and FE2 dashboard integration follow contract review. Decisions stay separate from historical audit evidence. |
 
+| 2026-11-21 | Release captain approved additive scenario-scoped transfer candidate contract | Preserve the selected scenario’s graph, evidence, and policy during simulation | Contract reviewed separately. Backend resolves fixture references and existing explicit requests remain supported. |
+
 Append to this log when scope/contract changes; include the agreeing owners and consequence.

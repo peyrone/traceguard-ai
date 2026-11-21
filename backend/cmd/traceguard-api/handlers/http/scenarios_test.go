@@ -54,7 +54,10 @@ func TestScenarioPipeline(t *testing.T) {
 		len(direct.Graph.Nodes) != 6 || len(direct.Graph.Edges) != 5 {
 		t.Fatalf("unexpected direct transfer result: %+v", direct)
 	}
-	if shuffled := analyze("shuffled_transfer"); !reflect.DeepEqual(shuffled, direct) {
+	shuffled := analyze("shuffled_transfer")
+	// Candidate IDs are intentionally scenario-scoped. Compare the investigation.
+	shuffled.TransferCandidates, direct.TransferCandidates = nil, nil
+	if !reflect.DeepEqual(shuffled, direct) {
 		t.Fatalf("shuffled response differs: %+v", shuffled)
 	}
 	missing := analyze("missing_intermediate")
@@ -140,6 +143,7 @@ func TestScenarioPipeline(t *testing.T) {
 	}
 	shuffledEvents := slices.Clone(events)
 	slices.Reverse(shuffledEvents)
+	partial.TransferCandidates = nil // Explicit event inputs do not expose fixture candidates.
 	if shuffled := analyzeEvents(shuffledEvents...); !reflect.DeepEqual(shuffled, partial) {
 		t.Fatalf("shuffled partial evidence response differs: %+v", shuffled)
 	}
