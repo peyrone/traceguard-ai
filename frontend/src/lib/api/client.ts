@@ -6,6 +6,8 @@ export type { AnalysisStatus as Status, AnalyzeResponse as Analysis, ExplainResp
 
 type Endpoint = "scenarios" | "analyze" | "explain";
 const configuredBaseURL = import.meta.env?.VITE_API_BASE_URL?.trim() ?? "";
+// Leave transport headroom above the Go provider’s five-second maximum.
+const explanationDeadlineMs = 6_000;
 const localBaseURL = "http://localhost:8080";
 export const hasConfiguredBackend = configuredBaseURL !== "";
 
@@ -69,7 +71,14 @@ export function createTraceGuardClient({
     listScenarios: (signal) => request("/scenarios", isScenarioList, signal),
     analyze: (input, signal) => request("/analyze", isAnalyzeResponse, signal, input),
     async explain(input, signal) {
-      const result = await request("/explain", isExplainResponse, signal, input);
+      const deadline = AbortSignal.timeout(explanationDeadlineMs);
+      const requestSignal = signal ? AbortSignal.any([signal, deadline]) : deadline;
+      const result = await request("/explain", isExplainResponse, requestSignal, input).catch((error: unknown) => {
+        if (deadline.aborted && !signal?.aborted) {
+          throw new Error("The explanation request timed out. Try again.");
+        }
+        throw error;
+      });
       const knownIds = new Set(evidenceIdsForRequest(input));
       if (result.evidence_event_ids.some((id) => !knownIds.has(id))) {
         throw new Error("Explanation cited an unknown evidence event ID.");

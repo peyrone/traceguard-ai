@@ -95,3 +95,58 @@ test('late analysis from the previous scenario cannot replace current results', 
   await waitFor(() => expect(screen.queryByText('Verified violation · 1 events processed')).toBeNull());
   expect(screen.getByText('Available events do not prove compliance.')).toBeTruthy();
 });
+
+test('the explanation separates an observed export from inferred upstream evidence', async () => {
+  const fixture: Analysis = {
+    ...analysis,
+    graph: {
+      ...analysis.graph,
+      nodes: [...analysis.graph.nodes, { id: 'origin', label: 'Origin', kind: 'internal' }],
+      edges: [...analysis.graph.edges, {
+        id: 'upstream', source: 'origin', target: 'a', evidence_status: 'INFERRED',
+        evidence_event_ids: ['evt-upstream'],
+      }],
+    },
+    findings: [
+      analysis.findings[0],
+      { ...analysis.findings[1], evidence_event_ids: ['evt-upstream'] },
+    ],
+  };
+  const fetch = vi.fn(async (url: string) => ({
+    ok: true,
+    json: async () => url.endsWith('/scenarios') ? [{ id: 'partial', label: 'Partial evidence' }]
+      : url.endsWith('/explain') ? { explanation: 'Completed export', next_steps: ['Review export'], evidence_event_ids: ['evt-003'], mode: 'ai' }
+      : fixture,
+  }));
+  vi.stubGlobal('fetch', fetch);
+  render(<App client={createApiClient()} />);
+  await userEvent.click(await screen.findByRole('button', { name: 'Explain finding' }));
+  const explanationPanel = screen.getByRole('region', { name: 'Explanation' });
+  await waitFor(() => expect(explanationPanel.textContent).toContain('AI-prioritized next steps'));
+  expect(explanationPanel.textContent).toContain('DENY_EXTERNAL_PII');
+  expect(screen.getByRole('list', { name: 'Cited audit events' }).textContent).toBe('evt-003');
+  const upstream = screen.getByRole('region', { name: 'Separate upstream finding' });
+  expect(upstream.textContent).toContain('Inconclusive');
+  expect(upstream.textContent).toContain('Origin → Service A');
+  expect(upstream.textContent).toContain('evt-upstream');
+  expect(upstream.textContent).not.toContain('evt-003');
+});
+
+test('a late explanation cannot render after changing scenarios', async () => {
+  const user = userEvent.setup();
+  let finish!: (response: Response) => void;
+  const pending = new Promise<Response>((resolve) => { finish = resolve; });
+  const baseFetch = mockAPI();
+  const fetch = vi.fn((url: string | URL | Request, options?: RequestInit) =>
+    String(url).endsWith('/explain') ? pending : baseFetch(url));
+  vi.stubGlobal('fetch', fetch);
+  render(<App client={createApiClient()} />);
+  await user.click(await screen.findByRole('button', { name: 'Explain finding' }));
+  await user.selectOptions(screen.getByLabelText('Scenario'), 'two');
+  await screen.findByRole('button', { name: 'Explain finding' });
+  const request = fetch.mock.calls.find(([url]) => String(url).endsWith('/explain'));
+  expect(request?.[1]?.signal?.aborted).toBe(true);
+  finish(Response.json({ explanation: 'Stale explanation', next_steps: [], evidence_event_ids: ['evt-003'], mode: 'ai' }));
+  await pending;
+  expect(screen.queryByText('Stale explanation')).toBeNull();
+});

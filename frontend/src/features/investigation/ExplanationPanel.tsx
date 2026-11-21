@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ExplainResponse, Finding } from "../../lib/api/types.ts";
 
 export type RequestExplanation = (finding: Finding, signal: AbortSignal) => Promise<ExplainResponse>;
@@ -11,14 +11,17 @@ type ExplanationState =
 interface ExplanationContentProps {
   state?: ExplanationState;
   onExplain: () => void;
+  finding?: Finding;
+  relatedEvidence?: ReactNode;
 }
 
 interface ExplanationPanelProps {
   finding: Finding;
   onRequest: RequestExplanation;
+  relatedEvidence?: ReactNode;
 }
 
-export function ExplanationPanel({ finding, onRequest }: ExplanationPanelProps) {
+export function ExplanationPanel({ finding, onRequest, relatedEvidence }: ExplanationPanelProps) {
   const [lastRequest, setLastRequest] = useState<{ finding: Finding; state: ExplanationState }>();
   const activeRequest = useRef<AbortController | null>(null);
   const state = lastRequest?.finding === finding ? lastRequest.state : undefined;
@@ -41,21 +44,23 @@ export function ExplanationPanel({ finding, onRequest }: ExplanationPanelProps) 
     }
   }
 
-  return <ExplanationContent state={state} onExplain={explain} />;
+  return <ExplanationContent state={state} onExplain={explain} finding={finding} relatedEvidence={relatedEvidence} />;
 }
 
-export function ExplanationContent({ state, onExplain }: ExplanationContentProps) {
+export function ExplanationContent({ state, onExplain, finding, relatedEvidence }: ExplanationContentProps) {
   return (
     <section className="tg-investigation-panel" aria-label="Explanation">
       <h2>Explanation</h2>
+      {finding && <p>Selected rule <code>{finding.rule_id}</code></p>}
       <button className="tg-explain-button" type="button" onClick={onExplain} disabled={state?.status === "loading"}>
         {state?.status === "error" ? "Retry explanation" : "Explain finding"}
       </button>
       {state?.status === "loading" && <p role="status">Loading explanation…</p>}
       {state?.status === "error" && <p role="alert">{state.message}</p>}
+      {relatedEvidence}
       {state?.status === "ready" && (
         <div className="tg-explanation-result" aria-live="polite">
-          <p className="tg-explanation-mode">{state.result.mode === "ai" ? "AI-assisted explanation" : "Rule-based fallback"}</p>
+          <p className="tg-explanation-mode">{state.result.mode === "ai" ? "AI-prioritized next steps" : "Rule-based fallback"}</p>
           <p>{state.result.explanation}</p>
           {state.result.evidence_event_ids.length > 0 && (
             <ul className="tg-event-ids" aria-label="Cited audit events">
