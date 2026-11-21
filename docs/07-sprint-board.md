@@ -68,3 +68,5 @@
 - Combined verification: clean install exits 0 (111 packages); 12 Node tests + 4 component tests pass; TypeScript/Vite build and whitespace check exit 0. Checkpoint runner records every test name/result and command in the linked file; `npm run test:checkpoints` reruns and updates it automatically.
 - TG-10 evidence-panel composition is integrated and automated checks pass. TG-15 remains blocked for live API S01–S04 (Go / running API unavailable) and visual viewport checks (browser host unavailable). Those tasks are explicitly BLOCKED in checkpoints, not counted as passes.
 - FE1 commit and FE2 merge are local on `feat/fe-framework-graph`; no push or merge to main performed. Concurrent `docs/plans/` edits are excluded from these commits.
+
+- Browser boot update: opened `http://127.0.0.1:5173/` in native Chrome and verified the rendered app. Backend fetch failure remains visible; CP-07 records the observed state. Responsive graph checks and real API flow remain unverified.

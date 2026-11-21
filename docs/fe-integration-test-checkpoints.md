@@ -464,3 +464,9 @@ Result: **PASS**, exit 0.
 ```text
 
 ```
+
+## CP-07: Local browser boot — PASS (API unavailable)
+
+- Requested by user: run frontend in browser. Vite restarted on `http://127.0.0.1:5173/` using NVM Node v24.16.0.
+- Dedicated browser host remains unavailable; native Chrome control succeeded. Verified visible heading “TraceGuard AI”, “Synthetic audit data · API mode”, scenario control and “Retry scenarios”.
+- Page shows “Unable to load scenarios. Failed to fetch” because the backend is unavailable. Frontend boot passes; live scenarios remain BLOCKED. This does not verify the 1440/1024/390 graph layouts.
