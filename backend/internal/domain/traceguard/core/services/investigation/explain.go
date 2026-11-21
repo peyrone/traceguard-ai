@@ -31,6 +31,7 @@ type Request struct {
 	Rule              string             `json:"rule,omitempty"`
 	Classification    string             `json:"classification,omitempty"`
 	MissingEvidence   []evidenceGap      `json:"missing_evidence,omitempty"`
+	Review            *reviewPrompt      `json:"review,omitempty"`
 	ApplicableStepIDs []string           `json:"applicable_step_ids"`
 }
 
@@ -38,6 +39,7 @@ type Suggestion struct {
 	Status       entities.Status `json:"status"`
 	EvidenceRefs []string        `json:"evidence_refs"`
 	StepIDs      []string        `json:"step_ids"`
+	Review       *ReviewRanking  `json:"review,omitempty"`
 }
 
 type Provider interface {
@@ -50,6 +52,7 @@ type Result struct {
 	NextSteps        []string        `json:"next_steps"`
 	EvidenceEventIDs []string        `json:"evidence_event_ids"`
 	Mode             string          `json:"mode"`
+	Review           EvidenceReview  `json:"-"`
 }
 
 var ErrInsufficientEvidence = errors.New("the verified finding requires all cited evidence and a supporting send")
@@ -65,10 +68,10 @@ func (s Service) Explain(ctx context.Context, finding entities.Finding, supplied
 	}
 	return s.explain(ctx, finding, supplied, Request{
 		ApplicableStepIDs: steps,
-	}, nil, steps)
+	}, nil, steps, EvidenceReview{})
 }
 
-func (s Service) explain(ctx context.Context, finding entities.Finding, supplied []Evidence, request Request, transfers map[string]entities.EvidenceStatus, fallbackSteps []string) (Result, error) {
+func (s Service) explain(ctx context.Context, finding entities.Finding, supplied []Evidence, request Request, transfers map[string]entities.EvidenceStatus, fallbackSteps []string, review EvidenceReview) (Result, error) {
 	byID := make(map[string]Evidence, len(supplied))
 	for _, item := range supplied {
 		if item.EventID != "" {
@@ -111,9 +114,24 @@ func (s Service) explain(ctx context.Context, finding entities.Finding, supplied
 	default:
 		explanation = "Inconclusive. The available evidence is insufficient to determine the policy result."
 	}
-	result := Result{Status: finding.Status, Explanation: explanation, NextSteps: renderSteps(fallbackSteps), EvidenceEventIDs: citations, Mode: "fallback"}
+	result := Result{Status: finding.Status, Explanation: explanation, NextSteps: renderSteps(fallbackSteps), EvidenceEventIDs: citations, Mode: "fallback", Review: review}
 	if s.provider == nil || ctx.Err() != nil || !knownStatus(finding.Status) {
 		return result, nil
+	}
+	if len(review.Insights) > 0 || len(review.Mappings) > 0 {
+		aliases := make(map[string]string)
+		for _, id := range citations {
+			aliases[id] = "E" + strconv.Itoa(len(aliases)+1)
+		}
+		for _, item := range review.Insights {
+			for _, id := range item.EvidenceEventIDs {
+				if _, exists := aliases[id]; !exists {
+					aliases[id] = "E" + strconv.Itoa(len(aliases)+1)
+				}
+			}
+		}
+		choices := reviewChoices(review, aliases)
+		request.Review = &choices
 	}
 	start := time.Now()
 	suggestion, err := s.provider.Suggest(ctx, request)
@@ -149,11 +167,27 @@ func (s Service) explain(ctx context.Context, finding entities.Finding, supplied
 			return result, nil
 		}
 	}
-	if steps := renderSteps(suggestion.StepIDs); len(steps) > 0 {
-		result.NextSteps, result.Mode = steps, "ai"
-	} else {
+	steps := renderSteps(suggestion.StepIDs)
+	if len(steps) == 0 {
 		category = "invalid_actions"
+		return result, nil
 	}
+	if request.Review != nil {
+		if suggestion.Review == nil {
+			category = "missing_review"
+			return result, nil
+		}
+		ranked, valid := rankReview(review, *request.Review, *suggestion.Review)
+		if !valid {
+			category = "invalid_review"
+			return result, nil
+		}
+		result.Review = ranked
+	} else if suggestion.Review != nil {
+		category = "unexpected_review"
+		return result, nil
+	}
+	result.NextSteps, result.Mode = steps, "ai"
 	return result, nil
 }
 

@@ -93,7 +93,7 @@ func TestFixtureExplanation(t *testing.T) {
 		{"shuffled_transfer", "evt-003", "OBSERVED", "", "review_export", "collect_completed_send", entities.VerifiedViolation},
 	} {
 		t.Run(tc.scenario+"/"+tc.event, func(t *testing.T) {
-			for _, failure := range []string{"", "action", "status", "citation"} {
+			for _, failure := range []string{"", "action", "status", "citation", "article", "insight_citation", "provider", "timeout"} {
 				router := echo.New()
 				provider := explanationProvider(func(_ context.Context, input investigation.Request) (investigation.Suggestion, error) {
 					raw, _ := json.Marshal(input)
@@ -114,14 +114,31 @@ func TestFixtureExplanation(t *testing.T) {
 						strings.Contains(string(raw), tc.event) {
 						t.Fatalf("unexpected provider facts: %s", raw)
 					}
-					result := investigation.Suggestion{Status: tc.status, EvidenceRefs: []string{"E1"}, StepIDs: []string{tc.action}}
+					ranking := investigation.ReviewRanking{Insights: []investigation.ReviewSelection{}, Mappings: []investigation.ReviewSelection{}}
+					if input.Review != nil {
+						for _, item := range input.Review.Insights {
+							ranking.Insights = append(ranking.Insights, item.ReviewSelection)
+						}
+						for _, item := range input.Review.Mappings {
+							ranking.Mappings = append(ranking.Mappings, item.ReviewSelection)
+						}
+					}
+					result := investigation.Suggestion{Status: tc.status, EvidenceRefs: []string{"E1"}, StepIDs: []string{tc.action}, Review: &ranking}
 					switch failure {
 					case "action":
 						result.StepIDs = []string{tc.rejected}
 					case "status":
 						result.Status = entities.NoViolationObserved
 					case "citation":
-						result.EvidenceRefs = []string{"E2"}
+						result.EvidenceRefs = []string{"E999"}
+					case "article":
+						ranking.Mappings = []investigation.ReviewSelection{{ID: "44", EvidenceRefs: []string{"E1"}}}
+					case "insight_citation":
+						ranking.Insights[0].EvidenceRefs = []string{"E999"}
+					case "provider":
+						return investigation.Suggestion{}, errors.New("provider unavailable")
+					case "timeout":
+						return investigation.Suggestion{}, context.DeadlineExceeded
 					}
 					return result, nil
 				})
@@ -155,7 +172,7 @@ func TestFixtureExplanation(t *testing.T) {
 				if failure != "" {
 					want = "fallback"
 				}
-				if string(explained.Mode) != want || !slices.Equal(explained.EvidenceEventIds, []string{tc.event}) || len(explained.NextSteps) == 0 {
+				if string(explained.Mode) != want || !slices.Equal(explained.EvidenceEventIds, []string{tc.event}) || len(explained.NextSteps) == 0 || explained.Insights == nil || len(*explained.Insights) == 0 {
 					t.Fatalf("%s: unexpected explanation: %+v", failure, explained)
 				}
 			}

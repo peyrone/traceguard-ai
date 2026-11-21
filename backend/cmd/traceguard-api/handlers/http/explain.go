@@ -52,10 +52,33 @@ func (s *server) Explain(c echo.Context) error {
 	if err != nil {
 		return fail(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
 	}
-	return c.JSON(http.StatusOK, api.ExplainResponse{
+	response := api.ExplainResponse{
 		Explanation: result.Explanation, NextSteps: result.NextSteps, EvidenceEventIds: result.EvidenceEventIDs,
 		Mode: api.ExplainResponseMode(result.Mode),
-	})
+	}
+	if len(result.Review.Insights) > 0 {
+		insights := make([]api.InvestigationInsight, 0, len(result.Review.Insights))
+		for _, item := range result.Review.Insights {
+			insights = append(insights, api.InvestigationInsight{
+				Kind: api.InvestigationInsightKind(item.Kind), Text: item.Text, EvidenceEventIds: item.EvidenceEventIDs,
+			})
+		}
+		response.Insights = &insights
+	}
+	if len(result.Review.Mappings) > 0 {
+		mappings := make([]api.GDPRMapping, 0, len(result.Review.Mappings))
+		for _, item := range result.Review.Mappings {
+			ref := item.Reference
+			mappings = append(mappings, api.GDPRMapping{
+				Reference: api.GDPRReference{Article: ref.Article, Title: ref.Title, Criteria: ref.Criteria,
+					SourceUrl: ref.SourceURL, GuidanceUrl: ref.GuidanceURL},
+				Assessment: api.GDPRMappingAssessment(item.Assessment), Rationale: item.Rationale,
+				EvidenceEventIds: item.EvidenceEventIDs, MissingFacts: item.MissingFacts,
+			})
+		}
+		response.GdprMappings = &mappings
+	}
+	return c.JSON(http.StatusOK, response)
 }
 
 // Match the existing finding payload against server-owned analysis. Equivalent
@@ -78,7 +101,7 @@ func (s *server) fixtureFacts(ctx context.Context, selected entities.Finding, ev
 			if !reflect.DeepEqual(finding, selected) {
 				continue
 			}
-			facts := investigation.NewFixtureFacts(finding, events, graph, policy)
+			facts := investigation.NewFixtureFacts(finding, events, graph, policy, findings)
 			for _, trusted := range facts.Evidence {
 				// Preserve existing caller validation for missing or contradictory summaries.
 				index := slices.IndexFunc(evidence, func(item investigation.Evidence) bool {
