@@ -3,16 +3,26 @@ package entities
 import "time"
 
 type Event struct {
-	EventID, TraceID, TransferID      string
-	OccurredAt, ObservedAt            time.Time
-	Service, Action, Outcome          string
-	SourceService, DestinationService string
-	DataRef, Classification, Purpose  string
+	EventID            string    `json:"event_id"`
+	TraceID            string    `json:"trace_id"`
+	TransferID         string    `json:"transfer_id"`
+	OccurredAt         time.Time `json:"occurred_at"`
+	ObservedAt         time.Time `json:"observed_at"`
+	Service            string    `json:"service"`
+	Action             string    `json:"action"`
+	Outcome            string    `json:"outcome"`
+	SourceService      string    `json:"source_service"`
+	DestinationService string    `json:"destination_service"`
+	DataRef            string    `json:"data_ref"`
+	Classification     string    `json:"classification"`
+	Purpose            string    `json:"purpose"`
 }
 
 type Policy struct {
-	PolicyID, Classification             string
-	AllowedDestinations, AllowedPurposes []string
+	PolicyID            string   `json:"policy_id"`
+	Classification      string   `json:"classification"`
+	AllowedDestinations []string `json:"allowed_destinations"`
+	AllowedPurposes     []string `json:"allowed_purposes"`
 }
 
 type EvidenceStatus string

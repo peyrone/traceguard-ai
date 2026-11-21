@@ -21,3 +21,14 @@ from `sales-api` to `external-crm` for `MARKETING`. The graph has one
 
 Expected output contains a `DENY_EXTERNAL_PII` finding with status
 `VERIFIED_VIOLATION`, evidence `["evt-003"]`, and empty missing evidence.
+
+The lineage adapter retains the earliest receipt for retries of an identical
+event and drops IDs with conflicting payloads. A completed send with both
+endpoints is observed. An unmatched completed receipt can support an inferred
+edge using its explicit endpoints or a unique upstream destination with the
+same trace and data reference. Attempted and failed sends are inferred clues
+when both endpoints are present. Only completed sends support observed edges.
+
+The API uses `INCONCLUSIVE` until a detector supplies a status. To distinguish
+an evaluated allowed transfer from a result with insufficient evidence,
+return a status-bearing finding with `NoViolationObserved` when appropriate.
