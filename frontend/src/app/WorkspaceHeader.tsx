@@ -1,22 +1,18 @@
 import { useEffect, useState } from 'react';
 import logo from './assets/team-logo.webp';
 
-export function WorkspaceHeader({ hasReferences }: { hasReferences: boolean }) {
+export function WorkspaceHeader() {
   const [dark, setDark] = useState(document.documentElement.dataset.theme === 'dark');
-  const [section, setSection] = useState(window.location.hash);
 
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-color-scheme: dark)');
     function followSystem() {
       if (!document.documentElement.dataset.preference) setDark(Boolean(media?.matches));
     }
-    function readHash() { setSection(window.location.hash); }
     followSystem();
     media?.addEventListener('change', followSystem);
-    window.addEventListener('hashchange', readHash);
     return () => {
       media?.removeEventListener('change', followSystem);
-      window.removeEventListener('hashchange', readHash);
     };
   }, []);
 
@@ -31,15 +27,10 @@ export function WorkspaceHeader({ hasReferences }: { hasReferences: boolean }) {
     setDark(!dark);
   }
 
-  const atReferences = hasReferences && section === '#references';
-  return <header className="topbar"><div className="nav-inner">
-    <a className="brand" href="#workspace" aria-label="TraceGuard AI workspace">
+  return <header className="topbar" aria-label="Application"><div className="nav-inner">
+    <a className="brand" href="#dashboard" aria-label="TraceGuard AI dashboard">
       <span className="brand-mark"><img src={logo} alt="" /></span>TraceGuard <b>AI</b>
     </a>
-    <nav aria-label="Main navigation">
-      <a href="#workspace" aria-current={atReferences ? undefined : 'location'}>Workspace</a>
-      {hasReferences && <a href="#references" aria-current={atReferences ? 'location' : undefined}>Evidence references</a>}
-    </nav>
     <span className="data-source">Synthetic audit data · API mode</span>
     <button className="theme-toggle" type="button" onClick={toggle} aria-label="Dark mode" aria-pressed={dark}
       title={dark ? 'Switch to light mode' : 'Switch to dark mode'}>

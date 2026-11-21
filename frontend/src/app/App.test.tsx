@@ -1,5 +1,5 @@
-import { afterEach, expect, test, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { collectReferences } from '../features/investigation/EvidenceReferences';
@@ -9,6 +9,15 @@ import { createApiClient, type Analysis } from '../lib/api/client';
 vi.mock('../features/lineage/LineageGraph', () => ({
   LineageGraph: ({ highlightedEdgeIds }: { highlightedEdgeIds: string[] }) => <div data-testid="highlighted">{highlightedEdgeIds.join(',')}</div>,
 }));
+
+beforeEach(() => { window.history.replaceState(null, '', '#workspace?case=one'); });
+
+async function navigateToCase(id: string) {
+  await act(async () => {
+    window.history.pushState(null, '', '#workspace?case=' + id);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+}
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -41,10 +50,9 @@ test('automatic analysis drives highlights and evidence remains inspectable with
   const fetch = mockAPI();
   const user = userEvent.setup();
   render(<App client={createApiClient()} />);
-  await screen.findByRole('option', { name: 'Scenario one' });
   expect((await screen.findByTestId('highlighted')).textContent).toBe('ab');
   expect(screen.getByRole('list', { name: 'Related graph edges' }).textContent).toContain('Service A → Service B');
-  await user.selectOptions(screen.getByLabelText('Inspect service evidence'), 'a');
+  await user.click(screen.getByRole('button', { name: 'Service A (a)' }));
   expect(within(screen.getByRole('region', { name: 'Service evidence' })).getByRole('button', { name: 'evt-003' })).toBeTruthy();
   await user.click(screen.getByRole('button', { name: /UNMATCHED/ }));
   expect(screen.getByTestId('highlighted').textContent).toBe('');
@@ -57,26 +65,26 @@ test('scenario changes clear service selection and explanation before automatic 
   const fetch = mockAPI();
   const user = userEvent.setup();
   render(<App client={createApiClient()} />);
-  await screen.findByRole('option', { name: 'Scenario one' });
   await screen.findByTestId('highlighted');
-  await user.selectOptions(screen.getByLabelText('Inspect service evidence'), 'a');
+  await user.click(screen.getByRole('button', { name: 'Service A (a)' }));
   await user.click(screen.getByRole('button', { name: 'Explain finding' }));
   await screen.findByText('Synthetic fallback text');
-  await user.selectOptions(screen.getByLabelText('Investigation case'), 'two');
+  await navigateToCase('two');
   expect(screen.queryByText('Synthetic fallback text')).toBeNull();
   expect(fetch).toHaveBeenCalledTimes(4);
   await screen.findByTestId('highlighted');
-  expect((screen.getByLabelText('Inspect service evidence') as HTMLSelectElement).value).toBe('');
+  expect(within(screen.getByRole('group', { name: 'Inspect service evidence' })).queryByRole('button', { pressed: true })).toBeNull();
 });
 
 test('API failures stay visible without substituting a preview graph; retry recovers', async () => {
+  window.history.replaceState(null, '', '/');
   const fetch = vi.fn().mockRejectedValueOnce(new Error('Offline')).mockResolvedValue({ ok: true, json: async () => [] });
   vi.stubGlobal('fetch', fetch);
   render(<App client={createApiClient()} />);
   expect((await screen.findByRole('alert')).textContent).toContain('Offline');
   expect(screen.queryByTestId('highlighted')).toBeNull();
-  await userEvent.click(screen.getByRole('button', { name: 'Retry case catalog' }));
-  await waitFor(() => expect(screen.getByRole('option', { name: 'No cases available' })).toBeTruthy());
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh cases' }));
+  await screen.findByText('No cases in the catalog.');
   expect(screen.getByText('Synthetic audit data · API mode')).toBeTruthy();
 });
 
@@ -91,7 +99,7 @@ test('late analysis from the previous scenario cannot replace current results', 
   vi.stubGlobal('fetch', fetch);
   render(<App client={createApiClient()} />);
   await screen.findByText('Retrieving case analysis…');
-  await userEvent.selectOptions(screen.getByLabelText('Investigation case'), 'two');
+  await navigateToCase('two');
   await screen.findByRole('heading', { name: 'No violation observed' });
   expect(screen.getByRole('status').textContent).toContain('7 events processed');
   resolveOld({ ok: true, json: async () => analysis });
@@ -106,11 +114,10 @@ test('changing case during the 500 ms reveal delay discards the previous result'
     const client = createApiClient();
     const analyze = vi.fn(async () => analysis);
     await act(async () => { render(<App client={{ ...client, analyze }} />); });
-    const picker = screen.getByLabelText('Investigation case');
     await act(() => vi.advanceTimersByTimeAsync(400));
     expect(screen.queryByTestId('highlighted')).toBeNull();
 
-    await act(async () => { fireEvent.change(picker, { target: { value: 'two' } }); });
+    await navigateToCase('two');
     expect(analyze.mock.calls).toHaveLength(2);
     await act(() => vi.advanceTimersByTimeAsync(499));
     expect(screen.getByText('Retrieving case analysis…')).toBeTruthy();
@@ -132,7 +139,7 @@ test('case loading follows the selected request through an error and retry', asy
   let fail!: (error: Error) => void;
   analyze.mockReturnValueOnce(new Promise((_, reject) => { fail = reject; }));
   const user = userEvent.setup();
-  await user.selectOptions(screen.getByLabelText('Investigation case'), 'two');
+  await navigateToCase('two');
   const result = within(screen.getByRole('region', { name: 'Analysis result' }));
   const pending = within(result.getByRole('status'));
   expect(pending.getByText('Retrieving case analysis…')).toBeTruthy();
@@ -212,30 +219,24 @@ test('link counts and the evidence filter follow the analysis and selected findi
   expect(references.getAllByRole('row')).toHaveLength(3);
 });
 
-test('catalog refresh preserves the active case on failure and clears removed cases', async () => {
+test('dashboard refresh keeps the last catalog on failure and removes missing cases on recovery', async () => {
+  window.history.replaceState(null, '', '/');
   const fetch = mockAPI();
   const user = userEvent.setup();
   render(<App client={createApiClient()} />);
-  const picker = await screen.findByRole('combobox', { name: 'Investigation case' });
-  await screen.findByRole('option', { name: 'Scenario two' });
-  await user.selectOptions(picker, 'two');
-  await screen.findByTestId('highlighted');
-  await user.click(screen.getByRole('button', { name: 'Refresh case catalog' }));
-  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
-  expect((picker as HTMLSelectElement).value).toBe('two');
+  await screen.findByRole('link', { name: 'Open case Scenario two' });
   fetch.mockRejectedValueOnce(new Error('Offline'));
-  await user.click(screen.getByRole('button', { name: 'Refresh case catalog' }));
+  await user.click(screen.getByRole('button', { name: 'Refresh cases' }));
   expect((await screen.findByRole('alert')).textContent).toContain('Showing the last fetched list.');
-  expect((picker as HTMLSelectElement).value).toBe('two');
-  expect(screen.getByTestId('highlighted')).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Open case Scenario two' })).toBeTruthy();
   fetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
-  await user.click(screen.getByRole('button', { name: 'Retry case catalog' }));
-  await screen.findByRole('option', { name: 'No cases available' });
-  expect(screen.queryByTestId('highlighted')).toBeNull();
-  expect(screen.queryByText('Retrieving case analysis…')).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Refresh cases' }));
+  await screen.findByText('No cases in the catalog.');
+  expect(screen.queryByRole('link', { name: 'Open case Scenario two' })).toBeNull();
 });
 
 test('the explanation separates an observed export from inferred upstream evidence', async () => {
+  window.history.replaceState(null, '', '#workspace?case=partial');
   const fixture: Analysis = {
     ...analysis,
     graph: {
@@ -282,7 +283,7 @@ test('a late explanation cannot render after changing scenarios', async () => {
   vi.stubGlobal('fetch', fetch);
   render(<App client={createApiClient()} />);
   await user.click(await screen.findByRole('button', { name: 'Explain finding' }));
-  await user.selectOptions(screen.getByLabelText('Investigation case'), 'two');
+  await navigateToCase('two');
   await screen.findByRole('button', { name: 'Explain finding' });
   const request = fetch.mock.calls.find(([url]) => String(url).endsWith('/explain'));
   expect(request?.[1]?.signal?.aborted).toBe(true);
@@ -315,15 +316,15 @@ test('transfer selection is scoped to the scenario and stale responses are disca
   const user = userEvent.setup();
   render(<App client={createApiClient()} />);
   const button = () => screen.getByRole('button', { name: 'Test transfer' }) as HTMLButtonElement;
-  const transfer = () => screen.getByLabelText('Scenario transfer') as HTMLSelectElement;
+  const transfer = () => screen.getByRole('group', { name: 'Scenario transfer' });
   await screen.findByText('No transfer evidence is available to simulate.');
   expect(button().disabled).toBe(true);
 
-  await user.selectOptions(screen.getByLabelText('Investigation case'), 'two');
-  await screen.findByRole('option', { name: /a → b/ });
-  expect(transfer().options).toHaveLength(2);
+  await navigateToCase('two');
+  const candidate = await screen.findByRole('button', { name: /a → b/ });
+  expect(within(transfer()).getAllByRole('button')).toEqual([candidate]);
   expect(button().disabled).toBe(true);
-  await user.selectOptions(transfer(), external.id);
+  await user.click(candidate);
   const details = within(screen.getByRole('group', { name: 'Transfer details' }));
   for (const value of ['a', 'b', 'PII', 'MARKETING', 'evt-003']) expect(details.getByText(value)).toBeTruthy();
   expect(screen.getByText('policy-two')).toBeTruthy();
@@ -334,12 +335,62 @@ test('transfer selection is scoped to the scenario and stale responses are disca
   expect(JSON.parse(String(posted()[0][1]?.body))).toEqual({ scenario_id: 'two', candidate_id: external.id });
 
   await user.click(button());
-  await user.selectOptions(screen.getByLabelText('Investigation case'), 'one');
+  await navigateToCase('one');
   await screen.findByText('No transfer evidence is available to simulate.');
   expect(button().disabled).toBe(true);
-  expect(transfer().value).toBe('');
+  expect(screen.queryByRole('group', { name: 'Scenario transfer' })).toBeNull();
   expect(posted()[1][1]?.signal?.aborted).toBe(true);
   finish(Response.json({ decision: 'DENY', transfer_executed: false, reason: 'Stale transfer', rule_id: 'DENY_PURPOSE' }));
   await pending;
   expect(screen.queryByText(/Stale transfer|Original purpose denied/)).toBeNull();
+});
+
+test('dashboard prioritizes verified cases and opens the selected case in its report', async () => {
+  window.history.replaceState(null, '', '/');
+  const client = createApiClient();
+  const user = userEvent.setup();
+  const explain = vi.fn(async () => ({
+    explanation: 'The send event confirms the transfer.', evidence_event_ids: ['evt-003'],
+    mode: 'fallback' as const, next_steps: ['Review the destination.'],
+  }));
+  render(<App client={{ ...client, listScenarios: async () => [{ id: 'clear', label: 'Internal case' }, { id: 'leak', label: 'Export case' }],
+    analyze: async id => id === 'clear' ? { ...analysis, summary: { status: 'NO_VIOLATION_OBSERVED', events_processed: 1 }, findings: [] } : { ...analysis, findings: [analysis.findings[0]] },
+    explain }} />);
+  await screen.findByRole('heading', { name: 'Dashboard' });
+  const open = await screen.findByRole('link', { name: 'Open case Export case' });
+  expect(within(screen.getByRole('banner', { name: 'Application' })).getAllByRole('link')).toHaveLength(1);
+  const distribution = within(screen.getByRole('figure', { name: 'Case status distribution' }));
+  expect(distribution.getAllByText('50%')).toHaveLength(2);
+  const evidence = within(screen.getByRole('figure', { name: 'Evidence links by case' }));
+  expect(evidence.getByRole('link', { name: 'Export case' }).getAttribute('href')).toBe('#workspace?case=leak');
+  expect(evidence.getAllByTitle('1 observed, 0 inferred')).toHaveLength(2);
+  expect(screen.queryByRole('link', { name: 'Open case Internal case' })).toBeNull();
+  await user.click(screen.getByRole('checkbox'));
+  expect(screen.getAllByRole('link', { name: /Open case/ })[0]).toBe(open);
+  expect(screen.getByRole('link', { name: 'View report for Export case' }).getAttribute('href')).toBe('#report?case=leak');
+  await user.click(open);
+  await screen.findByRole('heading', { name: 'Verified violation' });
+  expect(window.location.hash).toBe('#workspace?case=leak');
+  expect(screen.queryByRole('combobox')).toBeNull();
+  await user.click(screen.getByRole('link', { name: 'View report' }));
+  const report = within(await screen.findByRole('article', { name: 'Case report' }));
+  expect(report.getByRole('heading', { name: 'Export case' })).toBeTruthy();
+  expect(await report.findByText('The send event confirms the transfer.')).toBeTruthy();
+  expect(report.getByText('Rule-based next steps')).toBeTruthy();
+  expect(report.getByText(/Observed transfer/)).toBeTruthy();
+  expect((report.getByRole('button', { name: 'Print / Save PDF' }) as HTMLButtonElement).disabled).toBe(false);
+  expect(window.location.hash).toBe('#report?case=leak');
+  expect(screen.queryByRole('combobox')).toBeNull();
+  await user.click(screen.getByRole('link', { name: /Back to dashboard/ }));
+  await user.click(await screen.findByRole('link', { name: 'View report for Export case' }));
+  expect(await screen.findByRole('article', { name: 'Case report' })).toBeTruthy();
+});
+
+test.each(['#workspace', '#report', '#report?case=missing'])('a link without an available case leads to the dashboard: %s', async hash => {
+  window.history.replaceState(null, '', hash);
+  mockAPI();
+  render(<App client={createApiClient()} />);
+  expect(await screen.findByRole('link', { name: 'View report for Scenario two' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+  if (hash.includes('missing')) expect(screen.getByRole('alert').textContent).toContain('missing');
 });

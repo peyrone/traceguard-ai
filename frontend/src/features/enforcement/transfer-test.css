@@ -15,8 +15,7 @@
 .transfer-policy { margin: 4px 0 0 30px; font-size: 13px; color: var(--muted); }
 .transfer-policy code { font-size: inherit; color: var(--ink); }
 .transfer-controls { display: grid; gap: 4px; min-width: 0; }
-.transfer-controls label { font-size: 13px; font-weight: 650; }
-.transfer-controls select { width: 100%; min-width: 0; }
+.transfer-controls > h3 { font-size: 13px; font-weight: 650; }
 .transfer-layout { display: grid; gap: 14px; padding: 18px 20px; }
 .transfer-preview {
   display: grid;

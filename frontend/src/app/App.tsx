@@ -1,15 +1,19 @@
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { TransferTestPanel } from '../features/enforcement/TransferTestPanel';
 import { Icon } from '../components/Icon';
 import { LinkComposition } from '../features/lineage/LinkComposition';
+import { caseHref, readRoute, type CaseSection } from './navigation';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import { collectReferences, EvidenceReferences, ReferenceDialog } from '../features/investigation/EvidenceReferences';
 import { ControlledExplanation, InvestigationPanel, UpstreamEvidence, statusLabels } from '../features/investigation/InvestigationPanel';
-import { LineageGraph } from '../features/lineage/LineageGraph';
 import { NodeDetails } from '../features/lineage/NodeDetails';
 import { getHighlightedEdgeIds } from '../features/lineage/flow-elements';
 import { api, type Analysis, type Explanation, type Scenario } from '../lib/api/client';
+
+const LineageGraph = lazy(() => import('../features/lineage/LineageGraph').then(module => ({ default: module.LineageGraph })));
+const Dashboard = lazy(() => import('./Dashboard'));
+const Report = lazy(() => import('./Report'));
 
 const resultRevealDelayMs = 500;
 const resultIcons = {
@@ -24,14 +28,64 @@ function errorMessage(error: unknown) {
 }
 
 export default function App({ client = api }: { client?: typeof api } = {}) {
+  const [showAll, setShowAll] = useState(false);
+  const [route, setRoute] = useState(readRoute);
+  useEffect(() => {
+    function navigate() { setRoute(readRoute()); }
+    window.addEventListener('hashchange', navigate);
+    return () => window.removeEventListener('hashchange', navigate);
+  }, []);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [scenarioID, setScenarioID] = useState('');
   const [refresh, setRefresh] = useState(0);
-  const [catalogFetchedAt, setCatalogFetchedAt] = useState<Date | null>(null);
   const [listing, setListing] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const refreshCatalog = useCallback(() => {
+    setListing(true);
+    setListError(null);
+    setRefresh(attempt => attempt + 1);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      try {
+        const available = await client.listScenarios(controller.signal);
+        if (controller.signal.aborted) return;
+        setScenarios(available);
+      } catch (error) {
+        if (!controller.signal.aborted) setListError(errorMessage(error));
+      } finally {
+        if (!controller.signal.aborted) setListing(false);
+      }
+    }
+    void load();
+    return () => controller.abort();
+  }, [refresh, client]);
+
+  const scenario = route.section === 'dashboard' ? undefined : scenarios.find(item => item.id === route.caseId);
+  useEffect(() => {
+    const page = route.section === 'report' ? 'Report' : 'Workspace';
+    document.title = (scenario ? scenario.label + ' · ' + page : 'Dashboard') + ' · TraceGuard AI';
+  }, [route.section, scenario]);
+  if (route.section !== 'dashboard') {
+    if (scenario) return <CaseView key={scenario.id} scenario={scenario} section={route.section} client={client} />;
+    if (listing) return <><WorkspaceHeader /><main><p role="status">Loading case catalog…</p></main></>;
+  }
+
+  return <>
+    <WorkspaceHeader />
+    <Suspense fallback={<main><p role="status">Loading dashboard…</p></main>}>
+      <Dashboard showAll={showAll} onShowAll={setShowAll} scenarios={scenarios} client={client} listing={listing} listError={listError} onRefresh={refreshCatalog}
+        unavailableCase={route.section !== 'dashboard' && !listError ? route.caseId : undefined} />
+    </Suspense>
+  </>;
+}
+
+function CaseView({ scenario, section, client }: { scenario: Scenario; section: CaseSection; client: typeof api }) {
+  const scenarioID = scenario.id;
+  const report = section === 'report';
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzing, setAnalyzing] = useState(true);
   const [retryAnalysis, setRetryAnalysis] = useState(0);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [referenceId, setReferenceId] = useState<string | null>(null);
@@ -43,37 +97,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
   const workspace = useRef<HTMLElement>(null);
   const explanationRequest = useRef<AbortController | null>(null);
 
-  const acceptCatalog = useEffectEvent((available: Scenario[]) => {
-    setScenarios(available);
-    setCatalogFetchedAt(new Date());
-    if (!available.some(item => item.id === scenarioID)) selectScenario(available[0]?.id ?? '');
-  });
-
-  function refreshCatalog() {
-    setListing(true);
-    setListError(null);
-    setRefresh(attempt => attempt + 1);
-  }
-
   useEffect(() => {
-    const controller = new AbortController();
-    async function load() {
-      try {
-        const available = await client.listScenarios(controller.signal);
-        if (controller.signal.aborted) return;
-        acceptCatalog(available);
-      } catch (error) {
-        if (!controller.signal.aborted) setListError(errorMessage(error));
-      } finally {
-        if (!controller.signal.aborted) setListing(false);
-      }
-    }
-    void load();
-    return () => controller.abort();
-  }, [refresh, client]);
-
-  useEffect(() => {
-    if (!scenarioID) return;
     const controller = new AbortController();
     let revealTimer: number | undefined;
     async function load() {
@@ -115,7 +139,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
       observer.observe(panel);
     }
     return () => observer.disconnect();
-  }, [analysis, selectedFindingId]);
+  }, [analysis, selectedFindingId, section]);
 
   useEffect(() => () => explanationRequest.current?.abort(), []);
 
@@ -124,18 +148,6 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
     setExplanation(null);
     setExplanationError(null);
     setExplaining(false);
-  }
-
-  function selectScenario(id: string) {
-    if (id === scenarioID) return;
-    resetExplanation();
-    setReferenceId(null);
-    setAnalysis(null);
-    setAnalyzing(id !== '');
-    setAnalysisError(null);
-    setSelectedFindingId(null);
-    setSelectedNodeId(null);
-    setScenarioID(id);
   }
 
   async function explainFinding() {
@@ -172,45 +184,37 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
     setRetryAnalysis((attempt) => attempt + 1);
   }
 
+  useEffect(() => {
+    if (section !== 'references') document.documentElement.scrollIntoView?.({ block: 'start' });
+  }, [section]);
+
+  useEffect(() => {
+    if (section === 'references' && analysis) document.getElementById('references')?.scrollIntoView?.();
+  }, [section, analysis]);
+
   return (
     <>
-      <WorkspaceHeader hasReferences={Boolean(analysis)} />
-      <main id="workspace" ref={workspace}>
+      <WorkspaceHeader />
+      <main id={report ? "report" : "workspace"} ref={workspace}>
         <header className="workspace-intro">
           <div>
-            <h1>Investigation workspace</h1>
-            <p>Trace data transfers and inspect the evidence behind each finding.</p>
+            <a className="back-to-cases" href="#dashboard">← Back to dashboard</a>
+            <h1>{report ? "Investigation report" : "Investigation workspace"}</h1>
+            <p className="case-identity"><strong>{scenario.label}</strong><code>{scenarioID}</code></p>
           </div>
-          <section className="case-picker" aria-label="Case catalog">
-            <div className="case-picker-heading">
-              <label htmlFor="scenario">Investigation case</label>
-              {catalogFetchedAt && <span>{scenarios.length} {scenarios.length === 1 ? 'case' : 'cases'}</span>}
-            </div>
-            <div className="case-picker-controls">
-              <select id="scenario" value={scenarioID} disabled={scenarios.length === 0}
-                onChange={(event) => selectScenario(event.target.value)}>
-                {scenarios.length === 0 && <option value="">{listing ? 'Loading cases…' : 'No cases available'}</option>}
-                {scenarios.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
-              </select>
-              <button type="button" onClick={refreshCatalog} disabled={listing}
-                aria-label={listError ? 'Retry case catalog' : 'Refresh case catalog'}
-                title="Refresh case catalog"><Icon name="refresh" /></button>
-            </div>
-            <div className="case-picker-meta">
-              {scenarioID && <code title="Case ID"><span className="sr-only">Case ID </span>{scenarioID}</code>}
-              {listing ? <span role="status">Fetching catalog…</span> : catalogFetchedAt &&
-                <span>Fetched <time dateTime={catalogFetchedAt.toISOString()} title={catalogFetchedAt.toLocaleString()}>
-                  {catalogFetchedAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </time></span>}
-            </div>
-            {listError && <p role="alert">Case catalog unavailable. {listError}{catalogFetchedAt && ' Showing the last fetched list.'}</p>}
-          </section>
+          <div className="case-page-links">
+            {!report && analysis && <a href={caseHref('references', scenarioID)}
+              onClick={() => { if (section === 'references') document.getElementById('references')?.scrollIntoView?.(); }}>Evidence references</a>}
+            <a className="case-page-action" href={caseHref(report ? 'workspace' : 'report', scenarioID)}>
+              {report ? 'Open case' : 'View report'} <Icon name="route" size={16} />
+            </a>
+          </div>
         </header>
         <section className="analysis-state" aria-label="Analysis result">
           {analyzing && <div className="case-download" key={scenarioID} role="status">
             <span className="case-download-icon" aria-hidden="true"><Icon name="download" size={26} /></span>
             <div><strong>Retrieving case analysis…</strong>
-              <p>{scenarios.find(item => item.id === scenarioID)?.label ?? scenarioID}</p></div>
+              <p>{scenario.label}</p></div>
             <span className="case-download-track" aria-hidden="true" />
           </div>}
           {analysisError && (
@@ -219,7 +223,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
               <button type="button" disabled={analyzing} onClick={analyzeScenario}>Retry analysis</button>
             </>
           )}
-          {analysis && <div className="result-banner" data-status={analysis.summary.status} role="status">
+          {!report && analysis && <div className="result-banner" data-status={analysis.summary.status} role="status">
             <span className="result-symbol"><Icon name={resultIcons[analysis.summary.status]} size={28} /></span>
             <div className="result-summary">
               <span className="eyebrow">Analysis result</span>
@@ -232,7 +236,11 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
             </div>
           </div>}
         </section>
-        {analysis && graph && <>
+        {report && analysis && <Suspense fallback={<p role="status">Loading report…</p>}>
+          <Report key={scenarioID} caseId={scenarioID} label={scenario.label}
+            client={client} analysis={analysis} />
+        </Suspense>}
+        {!report && analysis && graph && <>
           <div className="workspace-grid">
             <InvestigationPanel
               onInspect={setReferenceId}
@@ -247,7 +255,9 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
             />
             <section className="graph-panel surface" aria-labelledby="graph-title">
               <header className="panel-heading"><h2 id="graph-title"><Icon name="network" />Service lineage</h2><span>{graph.nodes.length} services</span></header>
-              <LineageGraph graph={graph} selectedFindingId={selectedFindingId} onSelectNode={setSelectedNodeId} highlightedEdgeIds={highlightedEdgeIds} />
+              <Suspense fallback={<p className="inset" role="status">Loading service lineage…</p>}>
+                <LineageGraph graph={graph} selectedFindingId={selectedFindingId} onSelectNode={setSelectedNodeId} highlightedEdgeIds={highlightedEdgeIds} />
+              </Suspense>
               <LinkComposition edges={graph.edges} />
               <NodeDetails onInspect={setReferenceId} graph={graph} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />
             </section>
@@ -265,13 +275,13 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
           <EvidenceReferences graph={graph} selectedFindingId={selectedFindingId} references={references} onInspect={setReferenceId} />
           {selectedReference && <ReferenceDialog item={selectedReference} graph={graph} onClose={() => setReferenceId(null)} />}
         </>}
-        <TransferTestPanel
+        {!report && <TransferTestPanel
           key={scenarioID + ":" + (analysis ? "ready" : "waiting")}
           scenarioID={scenarioID}
           analysis={analysis}
-          loading={analyzing || listing}
+          loading={analyzing}
           decide={client.decidePrivacy}
-        />
+        />}
       </main>
     </>
   );

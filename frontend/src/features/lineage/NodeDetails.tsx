@@ -11,13 +11,15 @@ export function NodeDetails({ graph, selectedNodeId, onSelectNode, onInspect }: 
   const edges = graph.edges.filter(({ source, target }) => source === node?.id || target === node?.id);
   return (
     <section className="node-details" aria-label="Service evidence">
-      <label htmlFor="service-details">Inspect service evidence</label>
-      <select id="service-details" value={node?.id ?? ''} onChange={(event) => onSelectNode(event.target.value)}>
-        <option value="">Select a service</option>
-        {[...graph.nodes].sort((a, b) => a.id.localeCompare(b.id)).map((item) => (
-          <option key={item.id} value={item.id}>{item.label} ({item.id})</option>
+      <h3 id="service-selection">Inspect service evidence</h3>
+      <div className="evidence-choices" role="group" aria-labelledby="service-selection">
+        {[...graph.nodes].sort((a, b) => a.id.localeCompare(b.id)).map(item => (
+          <button key={item.id} type="button" aria-label={item.label === item.id ? item.label : item.label + " (" + item.id + ")"} aria-pressed={node?.id === item.id}
+            onClick={() => onSelectNode(node?.id === item.id ? '' : item.id)}>
+            {item.label}{item.label !== item.id && <small>{item.id}</small>}
+          </button>
         ))}
-      </select>
+      </div>
       {node && <div key={node.id} className="service-info" aria-live="polite">
         <h3>{node.label}</h3>
         <p>{node.id} · {node.kind}</p>
