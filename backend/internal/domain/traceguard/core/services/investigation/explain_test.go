@@ -23,10 +23,10 @@ func TestExplain(t *testing.T) {
 		err        error
 		mode       string
 	}{
-		{"valid", Suggestion{entities.PotentialViolation, []string{"E1"}, []string{"check_policy"}}, nil, "ai"},
-		{"changed classification", Suggestion{entities.VerifiedViolation, []string{"E1"}, []string{"check_policy"}}, nil, "fallback"},
-		{"invented reference", Suggestion{entities.PotentialViolation, []string{"E2"}, []string{"check_policy"}}, nil, "fallback"},
-		{"unvetted action", Suggestion{entities.PotentialViolation, []string{"E1"}, []string{"invented"}}, nil, "fallback"},
+		{"valid", Suggestion{Status: entities.PotentialViolation, EvidenceRefs: []string{"E1"}, StepIDs: []string{"check_policy"}}, nil, "ai"},
+		{"changed classification", Suggestion{Status: entities.VerifiedViolation, EvidenceRefs: []string{"E1"}, StepIDs: []string{"check_policy"}}, nil, "fallback"},
+		{"invented reference", Suggestion{Status: entities.PotentialViolation, EvidenceRefs: []string{"E2"}, StepIDs: []string{"check_policy"}}, nil, "fallback"},
+		{"unvetted action", Suggestion{Status: entities.PotentialViolation, EvidenceRefs: []string{"E1"}, StepIDs: []string{"invented"}}, nil, "fallback"},
 		{"provider failure", Suggestion{}, errors.New("provider failure"), "fallback"},
 		{"timeout", Suggestion{}, context.DeadlineExceeded, "fallback"},
 	} {

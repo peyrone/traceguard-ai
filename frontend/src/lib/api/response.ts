@@ -2,6 +2,8 @@ import type {
   AnalysisStatus,
   AnalyzeResponse,
   ExplainResponse,
+  GDPRMapping,
+  InvestigationInsight,
   Finding,
   GraphEdge,
   GraphNode,
@@ -72,9 +74,27 @@ export function isAnalyzeResponse(value: unknown): value is AnalyzeResponse {
     && (value.transfer_candidates === undefined || isList(value.transfer_candidates, isTransferCandidate));
 }
 
+function isInsight(value: unknown): value is InvestigationInsight {
+  return isObject(value) && isString(value.text)
+    && (value.kind === "observation" || value.kind === "policy_concern" || value.kind === "uncertainty")
+    && isList(value.evidence_event_ids, isString) && value.evidence_event_ids.length > 0;
+}
+
+function isGDPRMapping(value: unknown): value is GDPRMapping {
+  return isObject(value) && isObject(value.reference) && isString(value.reference.article)
+    && isString(value.reference.title) && isString(value.reference.criteria)
+    && isString(value.reference.source_url) && value.reference.source_url.startsWith("https://eur-lex.europa.eu/")
+    && isString(value.reference.guidance_url) && value.reference.guidance_url.startsWith("https://www.edpb.europa.eu/")
+    && (value.assessment === "potential_concern" || value.assessment === "insufficient_information")
+    && isString(value.rationale) && isList(value.evidence_event_ids, isString) && value.evidence_event_ids.length > 0
+    && isList(value.missing_facts, isString) && value.missing_facts.length > 0;
+}
+
 export function isExplainResponse(value: unknown): value is ExplainResponse {
   return isObject(value) && isString(value.explanation) && isList(value.next_steps, isString)
-    && isList(value.evidence_event_ids, isString) && (value.mode === "ai" || value.mode === "fallback");
+    && isList(value.evidence_event_ids, isString) && (value.mode === "ai" || value.mode === "fallback")
+    && (value.insights === undefined || isList(value.insights, isInsight))
+    && (value.gdpr_mappings === undefined || isList(value.gdpr_mappings, isGDPRMapping));
 }
 
 export function isErrorResponse(value: unknown): value is { code: string; message: string } {

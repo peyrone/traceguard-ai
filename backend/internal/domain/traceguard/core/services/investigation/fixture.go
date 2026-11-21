@@ -23,12 +23,14 @@ type FixtureFacts struct {
 	transfers      map[string]entities.EvidenceStatus
 	classification string
 	gaps           []evidenceGap
+	review         EvidenceReview
 }
 
-func NewFixtureFacts(finding entities.Finding, events []entities.Event, graph entities.Graph, policy entities.Policy) FixtureFacts {
+func NewFixtureFacts(finding entities.Finding, events []entities.Event, graph entities.Graph, policy entities.Policy, findings []entities.Finding) FixtureFacts {
 	facts := FixtureFacts{
 		classification: knownValue(policy.Classification, "PII"),
 		transfers:      make(map[string]entities.EvidenceStatus),
+		review:         reviewEvidence(finding, events, graph, findings, policy),
 	}
 	for _, event := range events {
 		if slices.Contains(finding.EvidenceEventIDs, event.EventID) {
@@ -69,5 +71,5 @@ func (s Service) ExplainFixture(ctx context.Context, finding entities.Finding, f
 	return s.explain(ctx, finding, facts.Evidence, Request{
 		Rule:           knownValue(finding.RuleID, "DENY_EXTERNAL_PII", "DENY_PURPOSE", "TRANSFER_POLICY"),
 		Classification: facts.classification, MissingEvidence: facts.gaps, ApplicableStepIDs: steps,
-	}, facts.transfers, steps)
+	}, facts.transfers, steps, facts.review)
 }

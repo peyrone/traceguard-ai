@@ -20,6 +20,28 @@ const maxResponseBytes = 64 << 10
 
 const instructions = "Prioritize follow-up actions for this audit finding. Return one JSON object with status copied exactly, evidence_refs containing all supplied refs exactly once, and step_ids containing one to three distinct values from the supplied applicable_step_ids. Do not include prose or extra fields."
 
+const reviewInstructions = " Also rank every supplied review insight and mapping exactly once. In review.insights and review.mappings return only each item's id and its exact evidence_refs. Preserve uncertainty and do not generate new claims, legal assessments, or sources."
+
+var reviewResponseFormat = json.RawMessage(`{
+  "type":"json_schema",
+  "json_schema":{"name":"investigation_review","strict":true,"schema":{
+    "type":"object","additionalProperties":false,
+    "required":["status","evidence_refs","step_ids","review"],
+    "properties":{
+      "status":{"type":"string"},
+      "evidence_refs":{"type":"array","items":{"type":"string"}},
+      "step_ids":{"type":"array","items":{"type":"string"}},
+      "review":{"type":"object","additionalProperties":false,"required":["insights","mappings"],
+        "properties":{
+          "insights":{"type":"array","items":{"$ref":"#/$defs/selection"}},
+          "mappings":{"type":"array","items":{"$ref":"#/$defs/selection"}}
+        }}
+    },
+    "$defs":{"selection":{"type":"object","additionalProperties":false,"required":["id","evidence_refs"],
+      "properties":{"id":{"type":"string"},"evidence_refs":{"type":"array","items":{"type":"string"}}}}}
+  }}
+}`)
+
 type Client struct {
 	apiKey, model string
 	timeout       time.Duration
@@ -56,14 +78,20 @@ func (c *Client) Suggest(ctx context.Context, input investigation.Request) (inve
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	}
+	prompt := instructions
+	format := json.RawMessage(`{"type":"json_object"}`)
+	if input.Review != nil {
+		prompt += reviewInstructions
+		format = reviewResponseFormat
+	}
 	payload, err := json.Marshal(struct {
-		Model               string            `json:"model"`
-		Messages            []message         `json:"messages"`
-		ResponseFormat      map[string]string `json:"response_format"`
-		MaxCompletionTokens int               `json:"max_completion_tokens"`
+		Model               string          `json:"model"`
+		Messages            []message       `json:"messages"`
+		ResponseFormat      json.RawMessage `json:"response_format"`
+		MaxCompletionTokens int             `json:"max_completion_tokens"`
 	}{
-		Model: c.model, Messages: []message{{Role: "system", Content: instructions}, {Role: "user", Content: string(evidence)}},
-		ResponseFormat: map[string]string{"type": "json_object"}, MaxCompletionTokens: 512,
+		Model: c.model, Messages: []message{{Role: "system", Content: prompt}, {Role: "user", Content: string(evidence)}},
+		ResponseFormat: format, MaxCompletionTokens: 512,
 	})
 	if err != nil {
 		return result, fmt.Errorf("encode AI request: %w", err)

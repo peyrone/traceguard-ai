@@ -65,12 +65,43 @@ export function ExplanationContent({ state, onExplain, onInspect, finding, relat
       {relatedEvidence}
       {state?.status === "ready" && (
         <div className="tg-explanation-result" aria-live="polite">
-          <p className="tg-explanation-mode">{state.result.mode === "ai" ? "AI-prioritized next steps" : "Rule-based fallback"}</p>
+          <p className="tg-explanation-mode">{state.result.mode === "ai" ? state.result.insights?.length ? "AI-prioritized investigation" : "AI-prioritized next steps" : "Rule-based fallback"}</p>
           <p>{state.result.explanation}</p>
           {state.result.evidence_event_ids.length > 0 && (
             <ul className="tg-event-ids" aria-label="Cited audit events">
               {state.result.evidence_event_ids.map((id) => <li key={id}><EvidenceId id={id} onInspect={onInspect} /></li>)}
             </ul>
+          )}
+          {Boolean(state.result.insights?.length) && (
+            <>
+              <h3>Investigation insights</h3>
+              <ul className="tg-detail-list">
+                {state.result.insights?.map((item, index) => (
+                  <li key={index}>
+                    <strong>{item.kind === "uncertainty" ? "Uncertain" : item.kind === "policy_concern" ? "Policy concern" : "Observation"}</strong>
+                    <p>{item.text}</p>
+                    {item.evidence_event_ids.map((id) => <EvidenceId key={id} id={id} onInspect={onInspect} />)}
+                  </li>
+                ))}
+              </ul>
+              <h3>GDPR considerations</h3>
+              <p>These assessments flag questions for review. The internal policy verdict addresses the scenario’s configured rules.</p>
+              {state.result.gdpr_mappings?.length ? (
+                <ul className="tg-detail-list">
+                  {state.result.gdpr_mappings.map((item, index) => (
+                    <li key={index}>
+                      <strong>Article {item.reference.article} · {item.assessment === "potential_concern" ? "Potential concern" : "Insufficient information"}</strong>
+                      <p>{item.rationale}</p>
+                      <p>{item.reference.criteria}</p>
+                      {item.evidence_event_ids.map((id) => <EvidenceId key={id} id={id} onInspect={onInspect} />)}
+                      <p>Facts to verify</p>
+                      <ul>{item.missing_facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>
+                      <p><a href={item.reference.source_url}>EUR-Lex · {item.reference.title}</a>{" · "}<a href={item.reference.guidance_url}>EDPB guidance</a></p>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p>The available evidence supports no specific GDPR mapping or conclusion about compliance.</p>}
+            </>
           )}
           {state.result.next_steps.length > 0 && (
             <>

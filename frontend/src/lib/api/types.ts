@@ -95,11 +95,27 @@ export interface ExplainRequest {
   evidence: ExplainEvidence[];
 }
 
+export interface InvestigationInsight {
+  kind: "observation" | "policy_concern" | "uncertainty";
+  text: string;
+  evidence_event_ids: string[];
+}
+
+export interface GDPRMapping {
+  reference: { article: string; title: string; criteria: string; source_url: string; guidance_url: string };
+  assessment: "potential_concern" | "insufficient_information";
+  rationale: string;
+  evidence_event_ids: string[];
+  missing_facts: string[];
+}
+
 export interface ExplainResponse {
   explanation: string;
   next_steps: string[];
   evidence_event_ids: string[];
   mode: "ai" | "fallback";
+  insights?: InvestigationInsight[];
+  gdpr_mappings?: GDPRMapping[];
 }
 
 export interface TraceGuardClient {

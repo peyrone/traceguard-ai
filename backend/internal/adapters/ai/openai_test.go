@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -59,5 +60,29 @@ func TestCancellationAndTimeout(t *testing.T) {
 	_, err = adapter.Suggest(ctx, investigation.Request{})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation: %v", err)
+	}
+}
+
+func TestReviewStructuredOutput(t *testing.T) {
+	var input investigation.Request
+	if err := json.Unmarshal([]byte(`{"status":"INCONCLUSIVE","review":{"insights":[],"mappings":[]}}`), &input); err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Transport: transportFunc(func(req *http.Request) (*http.Response, error) {
+		var payload struct {
+			Format struct {
+				Type   string                `json:"type"`
+				Schema struct{ Strict bool } `json:"json_schema"`
+			} `json:"response_format"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil || payload.Format.Type != "json_schema" || !payload.Format.Schema.Strict {
+			t.Fatalf("wrong response format: %+v, %v", payload.Format, err)
+		}
+		body := `{"choices":[{"message":{"content":"{\"status\":\"INCONCLUSIVE\",\"evidence_refs\":[],\"step_ids\":[\"check_policy\"],\"review\":{\"insights\":[],\"mappings\":[]}}"},"finish_reason":"stop"}]}`
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))}, nil
+	})}
+	got, err := New("synthetic-test-key", "model-test", time.Second, client).Suggest(t.Context(), input)
+	if err != nil || got.Review == nil {
+		t.Fatalf("review=%+v err=%v", got, err)
 	}
 }
