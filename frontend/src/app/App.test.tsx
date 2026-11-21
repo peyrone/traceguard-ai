@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
-import type { Analysis } from '../lib/api/client';
+import { createApiClient, type Analysis } from '../lib/api/client';
 
 // Exercise app composition without relying on canvas geometry in jsdom.
 vi.mock('../features/lineage/LineageGraph', () => ({
@@ -39,20 +39,22 @@ function mockAPI() {
 test('automatic analysis drives highlights and evidence remains inspectable without matching edges', async () => {
   const fetch = mockAPI();
   const user = userEvent.setup();
-  render(<App />);
+  render(<App client={createApiClient()} />);
   await screen.findByRole('option', { name: 'Scenario one' });
   expect((await screen.findByTestId('highlighted')).textContent).toBe('ab');
+  expect(screen.getByRole('list', { name: 'Related graph edges' }).textContent).toContain('Service A → Service B');
   await user.selectOptions(screen.getByLabelText('Inspect service evidence'), 'a');
   expect(screen.getByText('Supporting event IDs: evt-003')).toBeTruthy();
   await user.click(screen.getByRole('button', { name: /UNMATCHED/ }));
   expect(screen.getByTestId('highlighted').textContent).toBe('');
-  expect(screen.getByText('Evidence: evt-unknown')).toBeTruthy();
+  expect(screen.getByText('evt-unknown')).toBeTruthy();
+  expect(screen.queryByRole('list', { name: 'Related graph edges' })).toBeNull();
 });
 
 test('scenario changes clear service selection and explanation before automatic analysis', async () => {
   const fetch = mockAPI();
   const user = userEvent.setup();
-  render(<App />);
+  render(<App client={createApiClient()} />);
   await screen.findByRole('option', { name: 'Scenario one' });
   await screen.findByTestId('highlighted');
   await user.selectOptions(screen.getByLabelText('Inspect service evidence'), 'a');
@@ -68,7 +70,7 @@ test('scenario changes clear service selection and explanation before automatic 
 test('API failures stay visible without substituting a preview graph; retry recovers', async () => {
   const fetch = vi.fn().mockRejectedValueOnce(new Error('Offline')).mockResolvedValue({ ok: true, json: async () => [] });
   vi.stubGlobal('fetch', fetch);
-  render(<App />);
+  render(<App client={createApiClient()} />);
   expect((await screen.findByRole('alert')).textContent).toContain('Offline');
   expect(screen.queryByTestId('highlighted')).toBeNull();
   await userEvent.click(screen.getByRole('button', { name: 'Retry scenarios' }));
@@ -85,7 +87,7 @@ test('late analysis from the previous scenario cannot replace current results', 
     return { ok: true, json: async () => ({ ...analysis, summary: { status: 'NO_VIOLATION_OBSERVED', events_processed: 7 }, findings: [] }) };
   });
   vi.stubGlobal('fetch', fetch);
-  render(<App />);
+  render(<App client={createApiClient()} />);
   await screen.findByText('Analyzing scenario…');
   await userEvent.selectOptions(screen.getByLabelText('Scenario'), 'two');
   await screen.findByText('No violation observed · 7 events processed');

@@ -10,7 +10,7 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unknown error.';
 }
 
-export default function App() {
+export default function App({ client = api }: { client?: typeof api } = {}) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [scenarioID, setScenarioID] = useState('');
   const [refresh, setRefresh] = useState(0);
@@ -31,7 +31,7 @@ export default function App() {
     const controller = new AbortController();
     async function load() {
       try {
-        const available = await api.listScenarios(controller.signal);
+        const available = await client.listScenarios(controller.signal);
         if (controller.signal.aborted) return;
         setScenarios(available);
         setScenarioID(available[0]?.id ?? '');
@@ -43,7 +43,7 @@ export default function App() {
     }
     void load();
     return () => controller.abort();
-  }, [refresh]);
+  }, [refresh, client]);
 
   useEffect(() => {
     if (!scenarioID) return;
@@ -52,7 +52,7 @@ export default function App() {
       setAnalyzing(true);
       setAnalysisError(null);
       try {
-        const result = await api.analyze(scenarioID, controller.signal);
+        const result = await client.analyze(scenarioID, controller.signal);
         if (controller.signal.aborted) return;
         setAnalysis(result);
         setSelectedFindingId(result.findings[0]?.id ?? null);
@@ -64,7 +64,7 @@ export default function App() {
     }
     void load();
     return () => controller.abort();
-  }, [scenarioID, retryAnalysis]);
+  }, [scenarioID, retryAnalysis, client]);
 
   useEffect(() => () => explanationRequest.current?.abort(), []);
 
@@ -94,7 +94,7 @@ export default function App() {
     explanationRequest.current = controller;
     setExplaining(true);
     try {
-      const result = await api.explain(finding, controller.signal);
+      const result = await client.explain(finding, controller.signal);
       if (!controller.signal.aborted) setExplanation(result);
     } catch (error) {
       if (!controller.signal.aborted) setExplanationError(errorMessage(error));
@@ -167,6 +167,7 @@ export default function App() {
       )}
       {analysis && (
         <InvestigationPanel
+          graph={analysis.graph}
           findings={analysis.findings}
           selectedFindingId={selectedFindingId}
           onSelectFinding={(id) => {

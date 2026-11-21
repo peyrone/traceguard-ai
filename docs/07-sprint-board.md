@@ -59,3 +59,12 @@
 - Final `npm run test -- --run`: exit 0, 6 Node tests + 4 Vitest component tests. Final `npm run build`: exit 0, upstream directive warning remains. Final `git diff --check`: exit 0.
 - Changes remain local on `feat/fe-framework-graph`; not committed, pushed or merged. Review only FE1-owned frontend paths and this board; exclude concurrent `docs/plans/` edits from the FE1 PR.
 - Next integration gate: FE2 supplies evidence-event inspection exports; BE1 supplies a runnable API for real S01–S04 checks. Browser access is required for responsive visual acceptance.
+
+## FE1 + FE2 merge checkpoints
+
+- FE1 committed as `e573b12`; merged `origin/feat/fe-investigation` (`8add912`) into `feat/fe-framework-graph` without conflicts.
+- Integration and every individual test task are tracked in [fe-integration-test-checkpoints.md](fe-integration-test-checkpoints.md). Combined verification is in progress; previous results above describe the pre-merge FE1 slice.
+- Merge commit: `bcbbcd7`. App now passes graph data into FE2's evidence panel and accepts an injected client for deterministic integration checks. FE2 source files remain unchanged after the merge.
+- Combined verification: clean install exits 0 (111 packages); 12 Node tests + 4 component tests pass; TypeScript/Vite build and whitespace check exit 0. Checkpoint runner records every test name/result and command in the linked file; `npm run test:checkpoints` reruns and updates it automatically.
+- TG-10 evidence-panel composition is integrated and automated checks pass. TG-15 remains blocked for live API S01–S04 (Go / running API unavailable) and visual viewport checks (browser host unavailable). Those tasks are explicitly BLOCKED in checkpoints, not counted as passes.
+- FE1 commit and FE2 merge are local on `feat/fe-framework-graph`; no push or merge to main performed. Concurrent `docs/plans/` edits are excluded from these commits.

@@ -11,7 +11,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "npm run test:unit && vitest run",
-    "test:unit": "node --test src/features/lineage/*.test.ts src/lib/api/*.test.ts"
+    "test:unit": "node --test src/features/lineage/*.test.ts src/features/investigation/*.test.ts src/lib/api/*.test.ts src/lib/fixtures/*.test.ts",
+    "test:checkpoints": "node check-integration.mjs"
   },
   "dependencies": {
     "@xyflow/react": "13.0.2",
