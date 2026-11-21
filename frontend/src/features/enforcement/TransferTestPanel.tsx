@@ -52,11 +52,11 @@ export function TransferTestPanel({ scenarioID, analysis, loading, decide }: Pro
 
   return (
     <section id="transfer-enforcement" className="surface transfer-panel" aria-labelledby="transfer-test-title">
-      <header className="panel-heading">
-        <h2 id="transfer-test-title"><Icon name="shield" />Simulated transfer enforcement</h2>
-        {selected && <span className="transfer-policy">Policy <code>{selected.policy_id}</code></span>}
-      </header>
-      <div className="transfer-layout">
+      <header className="transfer-heading">
+        <div>
+          <h2 id="transfer-test-title"><Icon name="shield" />Simulated transfer enforcement</h2>
+          {selected && <p className="transfer-policy">Policy <code>{selected.policy_id}</code></p>}
+        </div>
         <div className="transfer-controls">
           <label htmlFor="privacy-transfer-case">Scenario transfer</label>
           <select id="privacy-transfer-case" value={selected?.id ?? ""} disabled={loading || pending || candidates.length === 0} onChange={(event) => {
@@ -72,10 +72,9 @@ export function TransferTestPanel({ scenarioID, analysis, loading, decide }: Pro
             ))}
           </select>
           {!loading && candidates.length === 0 && <p>No transfer evidence is available to simulate.</p>}
-          <button className="transfer-submit" type="button" disabled={loading || pending || !selected || !scenarioID} onClick={() => void testTransfer()}>
-            <Icon name={pending ? "refresh" : "route"} size={17} />{pending ? "Checking policy…" : "Test transfer"}
-          </button>
         </div>
+      </header>
+      <div className="transfer-layout">
         {selected && (
           <div className="transfer-preview" role="group" aria-label="Transfer details">
             <div className="transfer-path">
@@ -91,6 +90,9 @@ export function TransferTestPanel({ scenarioID, analysis, loading, decide }: Pro
             </dl>
           </div>
         )}
+        <button className="transfer-submit" type="button" disabled={loading || pending || !selected || !scenarioID} onClick={() => void testTransfer()}>
+          <Icon name={pending ? "refresh" : "route"} size={17} />{pending ? "Checking policy…" : "Test transfer"}
+        </button>
       </div>
       {pending && <p role="status" className="sr-only">Checking transfer policy…</p>}
       {error && <p role="alert" className="transfer-feedback" data-tone="error"><strong>Policy check failed</strong>{error}</p>}

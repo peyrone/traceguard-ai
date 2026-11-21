@@ -15,10 +15,88 @@
 .tg-evidence-edges li { display: grid; gap: 2px; }
 .tg-evidence-edges strong { color: var(--accent); font-size: 13px; }
 .tg-detail-list { margin: 0; padding-left: 20px; }
-.explain-disclosure { width: 100%; display: flex; justify-content: space-between; align-items: center; font-weight: 650; padding: 13px 18px; border: 0; }
-.explain-disclosure span { color: var(--accent); }
-.explanation-body { padding: 0 18px 16px; overflow-wrap: anywhere; }
-.tg-explanation-mode { font-weight: 650; color: var(--muted); }
+@property --explain-rim-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 35deg;
+}
+.surface.explanation { position: relative; }
+.explain-rim {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  color: var(--accent);
+  border: 2px solid currentColor;
+  border-radius: inherit;
+}
+.explain-rim[data-muted="true"] { color: var(--muted); --rim-base: var(--border); --rim-highlight: var(--muted); }
+@supports (mask-composite: exclude) {
+  .explain-rim {
+    border: 0;
+    padding: 2px;
+    background: conic-gradient(from var(--explain-rim-angle, 35deg),
+      var(--rim-base, var(--link-light)) 0deg 110deg, currentColor 155deg, var(--rim-highlight, var(--focus)) 175deg,
+      var(--rim-base, var(--lavender)) 200deg, var(--rim-base, var(--link-light)) 245deg 360deg);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  .panel-in-view > .explain-rim { animation: explain-rim-sweep 4s linear infinite; }
+  @keyframes explain-rim-sweep {
+    from { --explain-rim-angle: 35deg; }
+    to { --explain-rim-angle: 395deg; }
+  }
+}
+@media (forced-colors: active) {
+  .explain-rim { background: none; mask: none; border: 2px solid ButtonText; }
+}
+.explain-disclosure {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  text-align: start;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(110deg, var(--soft), var(--panel) 80%);
+}
+.explain-disclosure:focus-visible { outline-offset: -4px; }
+.explain-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--link-light);
+  border-radius: 11px;
+  color: var(--accent);
+  background: var(--panel);
+}
+.explain-label { display: grid; gap: 1px; }
+.explain-label strong { font-size: 17px; }
+.explain-label > span { color: var(--muted); font-size: 13px; }
+.explain-chevron {
+  width: 9px;
+  height: 9px;
+  margin-inline-end: 4px;
+  border: solid var(--accent);
+  border-width: 0 1.75px 1.75px 0;
+  transform: rotate(45deg);
+}
+.explain-disclosure[aria-expanded="true"] .explain-chevron { transform: rotate(225deg); }
+.explanation-body { display: grid; gap: 12px; border-top: 1px solid var(--border); padding: 14px 18px 18px; overflow-wrap: anywhere; }
+.explanation-body > button { justify-self: start; }
+.explain-rule { color: var(--muted); font-size: 13px; }
+.explain-rule code { color: var(--ink); font-size: inherit; }
+.explain-steps { padding: 12px 14px; border-radius: 8px; background: var(--page); }
+.explain-steps[data-mode="ai"] { background: var(--soft); }
+.tg-explanation-mode { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 14px; }
+.explain-steps[data-mode="ai"] .tg-explanation-mode { color: var(--accent); }
+.explain-steps ol { margin-top: 6px; }
+.explain-steps li + li { margin-top: 4px; }
 @media (prefers-reduced-motion: no-preference) {
   .tg-explanation-result { animation: show-explanation 140ms ease-out; }
   @keyframes show-explanation { from { opacity: .3; } to { opacity: 1; } }

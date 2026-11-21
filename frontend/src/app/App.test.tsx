@@ -176,13 +176,21 @@ test('an explanation error leaves finding evidence available and can be retried'
   const user = userEvent.setup();
   render(<App client={createApiClient()} />);
   const explain = await screen.findByRole('button', { name: 'Explain finding' });
+  expect(explain.getAttribute('aria-describedby')).toBe(screen.getByText('AI-assisted investigation').id);
   fetch.mockRejectedValueOnce(new Error('Explanation unavailable'));
   await user.click(explain);
   expect((await screen.findByRole('alert')).textContent).toContain('Explanation unavailable');
   const evidence = within(screen.getByRole('region', { name: 'Evidence' }));
   expect(evidence.getByRole('button', { name: 'evt-003' })).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Retry explanation' }));
-  expect(await screen.findByText('Rule-based fallback')).toBeTruthy();
+  expect(await screen.findByRole('heading', { name: 'Rule-based fallback' })).toBeTruthy();
+  expect(screen.getByText('Rule-based next steps')).toBeTruthy();
+  expect(screen.queryByText('AI-assisted investigation')).toBeNull();
+  const rim = screen.getByRole('region', { name: 'Explanation' }).querySelector('.explain-rim');
+  expect(rim?.getAttribute('data-muted')).toBe('true');
+  await user.click(explain);
+  await user.click(explain);
+  expect(screen.getByRole('region', { name: 'Explanation' }).querySelector('.explain-rim')).toBe(rim);
 });
 
 test('link counts and the evidence filter follow the analysis and selected finding', async () => {
@@ -254,6 +262,7 @@ test('the explanation separates an observed export from inferred upstream eviden
   await userEvent.click(await screen.findByRole('button', { name: 'Explain finding' }));
   const explanationPanel = screen.getByRole('region', { name: 'Explanation' });
   await waitFor(() => expect(explanationPanel.textContent).toContain('AI-prioritized next steps'));
+  expect(explanationPanel.querySelector('.explain-rim')?.getAttribute('aria-hidden')).toBe('true');
   expect(explanationPanel.textContent).toContain('DENY_EXTERNAL_PII');
   expect(screen.getByRole('list', { name: 'Cited audit events' }).textContent).toBe('evt-003');
   const upstream = screen.getByRole('region', { name: 'Separate upstream finding' });
