@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { Icon } from '../components/Icon';
 import { LinkComposition } from '../features/lineage/LinkComposition';
@@ -18,6 +18,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [scenarioID, setScenarioID] = useState('');
   const [refresh, setRefresh] = useState(0);
+  const [catalogFetchedAt, setCatalogFetchedAt] = useState<Date | null>(null);
   const [listing, setListing] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -32,14 +33,25 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
   const [explaining, setExplaining] = useState(false);
   const explanationRequest = useRef<AbortController | null>(null);
 
+  const acceptCatalog = useEffectEvent((available: Scenario[]) => {
+    setScenarios(available);
+    setCatalogFetchedAt(new Date());
+    if (!available.some(item => item.id === scenarioID)) selectScenario(available[0]?.id ?? '');
+  });
+
+  function refreshCatalog() {
+    setListing(true);
+    setListError(null);
+    setRefresh(attempt => attempt + 1);
+  }
+
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
       try {
         const available = await client.listScenarios(controller.signal);
         if (controller.signal.aborted) return;
-        setScenarios(available);
-        setScenarioID(available[0]?.id ?? '');
+        acceptCatalog(available);
       } catch (error) {
         if (!controller.signal.aborted) setListError(errorMessage(error));
       } finally {
@@ -85,7 +97,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
     resetExplanation();
     setReferenceId(null);
     setAnalysis(null);
-    setAnalyzing(true);
+    setAnalyzing(id !== '');
     setAnalysisError(null);
     setSelectedFindingId(null);
     setSelectedNodeId(null);
@@ -135,31 +147,36 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
             <h1>Investigation workspace</h1>
             <p>Trace data transfers and inspect the evidence behind each finding.</p>
           </div>
-          <label className="scenario-label" htmlFor="scenario">Scenario
-            <select id="scenario" value={scenarioID} disabled={listing || scenarios.length === 0}
-              onChange={(event) => selectScenario(event.target.value)}>
-              {scenarios.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
-            </select>
-          </label>
+          <section className="case-picker" aria-label="Case catalog">
+            <div className="case-picker-heading">
+              <label htmlFor="scenario">Investigation case</label>
+              {catalogFetchedAt && <span>{scenarios.length} {scenarios.length === 1 ? 'case' : 'cases'}</span>}
+            </div>
+            <div className="case-picker-controls">
+              <select id="scenario" value={scenarioID} disabled={scenarios.length === 0}
+                onChange={(event) => selectScenario(event.target.value)}>
+                {scenarios.length === 0 && <option value="">{listing ? 'Loading cases…' : 'No cases available'}</option>}
+                {scenarios.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+              </select>
+              <button type="button" onClick={refreshCatalog} disabled={listing}
+                aria-label={listError ? 'Retry case catalog' : 'Refresh case catalog'}
+                title="Refresh case catalog"><Icon name="refresh" /></button>
+            </div>
+            <div className="case-picker-meta">
+              {scenarioID && <code title="Case ID"><span className="sr-only">Case ID </span>{scenarioID}</code>}
+              {listing ? <span role="status">Fetching catalog…</span> : catalogFetchedAt &&
+                <span>Fetched <time dateTime={catalogFetchedAt.toISOString()} title={catalogFetchedAt.toLocaleString()}>
+                  {catalogFetchedAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </time></span>}
+            </div>
+            {listError && <p role="alert">Case catalog unavailable. {listError}{catalogFetchedAt && ' Showing the last fetched list.'}</p>}
+          </section>
         </header>
         <section className="analysis-state" aria-label="Analysis result">
-          {listing && <p role="status">Loading scenarios…</p>}
-          {analyzing && <p role="status">Analyzing scenario…</p>}
-          {!listing && !listError && scenarios.length === 0 && <p>No scenarios are available.</p>}
-          {listError && (
-            <>
-              <p role="alert">Unable to load scenarios. {listError}</p>
-              <button type="button" onClick={() => {
-                setListing(true);
-                setListError(null);
-                setSelectedNodeId(null);
-                setRefresh((attempt) => attempt + 1);
-              }}>Retry scenarios</button>
-            </>
-          )}
+          {analyzing && <p role="status">Analyzing case…</p>}
           {analysisError && (
             <>
-              <p role="alert">Unable to analyze this scenario. {analysisError}</p>
+              <p role="alert">Unable to analyze this case. {analysisError}</p>
               <button type="button" disabled={analyzing} onClick={analyzeScenario}>Retry analysis</button>
             </>
           )}

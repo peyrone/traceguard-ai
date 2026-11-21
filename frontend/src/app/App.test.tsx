@@ -62,7 +62,7 @@ test('scenario changes clear service selection and explanation before automatic 
   await user.selectOptions(screen.getByLabelText('Inspect service evidence'), 'a');
   await user.click(screen.getByRole('button', { name: 'Explain finding' }));
   await screen.findByText('Synthetic fallback text');
-  await user.selectOptions(screen.getByLabelText('Scenario'), 'two');
+  await user.selectOptions(screen.getByLabelText('Investigation case'), 'two');
   expect(screen.queryByText('Synthetic fallback text')).toBeNull();
   expect(fetch).toHaveBeenCalledTimes(4);
   await screen.findByTestId('highlighted');
@@ -75,8 +75,8 @@ test('API failures stay visible without substituting a preview graph; retry reco
   render(<App client={createApiClient()} />);
   expect((await screen.findByRole('alert')).textContent).toContain('Offline');
   expect(screen.queryByTestId('highlighted')).toBeNull();
-  await userEvent.click(screen.getByRole('button', { name: 'Retry scenarios' }));
-  await waitFor(() => expect(screen.getByText('No scenarios are available.')).toBeTruthy());
+  await userEvent.click(screen.getByRole('button', { name: 'Retry case catalog' }));
+  await waitFor(() => expect(screen.getByRole('option', { name: 'No cases available' })).toBeTruthy());
   expect(screen.getByText('Synthetic audit data · API mode')).toBeTruthy();
 });
 
@@ -90,8 +90,8 @@ test('late analysis from the previous scenario cannot replace current results', 
   });
   vi.stubGlobal('fetch', fetch);
   render(<App client={createApiClient()} />);
-  await screen.findByText('Analyzing scenario…');
-  await userEvent.selectOptions(screen.getByLabelText('Scenario'), 'two');
+  await screen.findByText('Analyzing case…');
+  await userEvent.selectOptions(screen.getByLabelText('Investigation case'), 'two');
   await screen.findByRole('heading', { name: 'No violation observed' });
   expect(screen.getByRole('status').textContent).toContain('7 events processed');
   resolveOld({ ok: true, json: async () => analysis });
@@ -150,4 +150,27 @@ test('link counts and the evidence filter follow the analysis and selected findi
   expect(references.queryByRole('button', { name: 'evt-003' })).toBeNull();
   await user.click(references.getByRole('button', { name: /All references/ }));
   expect(references.getAllByRole('row')).toHaveLength(3);
+});
+
+test('catalog refresh preserves the active case on failure and clears removed cases', async () => {
+  const fetch = mockAPI();
+  const user = userEvent.setup();
+  render(<App client={createApiClient()} />);
+  const picker = await screen.findByRole('combobox', { name: 'Investigation case' });
+  await screen.findByRole('option', { name: 'Scenario two' });
+  await user.selectOptions(picker, 'two');
+  await screen.findByTestId('highlighted');
+  await user.click(screen.getByRole('button', { name: 'Refresh case catalog' }));
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
+  expect((picker as HTMLSelectElement).value).toBe('two');
+  fetch.mockRejectedValueOnce(new Error('Offline'));
+  await user.click(screen.getByRole('button', { name: 'Refresh case catalog' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('Showing the last fetched list.');
+  expect((picker as HTMLSelectElement).value).toBe('two');
+  expect(screen.getByTestId('highlighted')).toBeTruthy();
+  fetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
+  await user.click(screen.getByRole('button', { name: 'Retry case catalog' }));
+  await screen.findByRole('option', { name: 'No cases available' });
+  expect(screen.queryByTestId('highlighted')).toBeNull();
+  expect(screen.queryByText('Analyzing case…')).toBeNull();
 });

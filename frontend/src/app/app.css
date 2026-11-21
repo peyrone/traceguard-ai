@@ -74,8 +74,6 @@ h2 { font-size: 20px; line-height: 1.3; letter-spacing: -.035em; }
 h3 { font-size: 16px; }
 .workspace-intro p, .panel-heading > span { color: var(--muted); }
 .workspace-intro p { margin-top: 7px; }
-.scenario-label { display: grid; gap: 5px; font-weight: 650; font-size: 14px; }
-.scenario-label select { width: min(310px, 100%); max-width: 100%; }
 .analysis-state { margin-bottom: 20px; }
 .analysis-state [role="alert"] { color: var(--danger); }
 .result-banner { --tone: var(--accent); display: flex; align-items: center; gap: 14px; border: 1px solid color-mix(in srgb, var(--tone) 36%, var(--panel)); border-left: 4px solid var(--tone); background: var(--soft); border-radius: 10px; padding: 13px 20px; }
@@ -119,7 +117,6 @@ dialog::backdrop { background: #17102190; }
   .nav-inner nav a { min-height: 44px; }
   .data-source { font-size: 11px; max-width: 13ch; }
   .workspace-intro { display: grid; padding: 18px 0 15px; gap: 12px; }
-  .scenario-label select { width: 100%; }
   .result-banner { flex-wrap: wrap; padding: 10px 14px; gap: 5px; }
   .metrics { width: 100%; margin: 0; }
   .metrics b { font-size: 16px; }
@@ -152,7 +149,6 @@ dialog::backdrop { background: #17102190; }
 .panel-heading h2 { display: inline-flex; align-items: center; gap: 10px; }
 .panel-heading h2 svg { color: var(--accent); flex: none; }
 .workspace-intro { padding-top: clamp(24px, 3vw, 44px); }
-.scenario-label select { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); font-weight: 600; }
 .result-banner { position: relative; padding: 18px 22px; border-radius: 12px; }
 .result-symbol {
   position: relative;
@@ -189,3 +185,16 @@ dialog::backdrop { background: #17102190; }
   .metrics svg { display: none; }
   .metrics b { font-size: 15px; }
 }
+
+.case-picker { width: min(100%, 370px); min-width: 0; display: grid; gap: 5px; }
+.case-picker-heading, .case-picker-meta { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; }
+.case-picker-heading label { font-size: 14px; font-weight: 650; }
+.case-picker-heading span, .case-picker-meta { color: var(--muted); font-size: 12px; }
+.case-picker-controls { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; }
+.case-picker-controls select { width: 100%; min-width: 0; font-weight: 600; font-size: 14px; border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+.case-picker-controls button { display: grid; place-items: center; padding: 0; color: var(--accent); }
+.case-picker-controls button:hover:not(:disabled) { background: var(--soft); }
+.case-picker-meta code { font-size: 12px; }
+.case-picker-meta time { font-variant-numeric: tabular-nums; }
+.workspace-intro .case-picker [role="alert"] { margin: 0; color: var(--danger); font-size: 14px; }
+@media (max-width: 760px) { .case-picker { width: 100%; } }
