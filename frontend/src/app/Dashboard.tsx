@@ -51,6 +51,8 @@ interface Props {
   listing: boolean;
   listError: string | null;
   onRefresh: () => void;
+  autoRefresh: boolean;
+  onAutoRefreshChange: (enabled: boolean) => void;
   showAll: boolean;
   onShowAll: (value: boolean) => void;
   unavailableCase?: string;
@@ -64,7 +66,7 @@ function CaseActions({ scenario }: { scenario: Scenario }) {
   </div>;
 }
 
-export default function Dashboard({ scenarios, client, listing, listError, onRefresh, unavailableCase, showAll, onShowAll }: Props) {
+export default function Dashboard({ scenarios, client, listing, listError, onRefresh, autoRefresh, onAutoRefreshChange, unavailableCase, showAll, onShowAll }: Props) {
   const { language, t } = useLanguage();
   const [snapshot, setSnapshot] = useState<{ catalog: Scenario[]; rows: CaseRow[]; checked: Date }>();
   useEffect(() => {
@@ -87,12 +89,12 @@ export default function Dashboard({ scenarios, client, listing, listError, onRef
   const current = snapshot?.catalog === scenarios ? snapshot : undefined;
   const busy = listing || (scenarios.length > 0 && !current);
   useEffect(() => {
-    if (busy) return;
+    if (!autoRefresh || busy) return;
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') onRefresh();
     }, 60_000);
     return () => window.clearInterval(timer);
-  }, [busy, onRefresh]);
+  }, [autoRefresh, busy, onRefresh]);
 
   const rows = current?.rows ?? [];
   const checked = rows.filter((row): row is AnalyzedCase => row.analysis !== null);
@@ -106,7 +108,13 @@ export default function Dashboard({ scenarios, client, listing, listError, onRef
       <div><h1>{t("Dashboard")}</h1><p>{checked.length > 0
         ? <><strong>{needsReview.length} {t("of")} {checked.length}</strong> {t("analyzed cases need review.")}</>
         : t("Monitor case status and transfer evidence.")}</p></div>
-      <button className="overview-action" disabled={busy} onClick={onRefresh}><Icon name="refresh" size={17} />{t("Refresh cases")}</button>
+      <div className="overview-refresh-controls">
+        <button type="button" role="switch" aria-checked={autoRefresh} className="overview-refresh-switch" onClick={() => onAutoRefreshChange(!autoRefresh)}>
+          <span className="overview-refresh-track" aria-hidden="true" />
+          {t("Auto refresh")}
+        </button>
+        <button type="button" className="overview-action" disabled={busy} onClick={onRefresh}><Icon name="refresh" size={17} />{t("Refresh cases")}</button>
+      </div>
     </header>
     {unavailableCase && <p role="alert" className="overview-note">{t("Case")} <code>{unavailableCase}</code> {t("is unavailable. Choose a case from the dashboard.")}</p>}
     {listError && <p role="alert" className="overview-note">{t("Case catalog unavailable.")} {t(listError)}{scenarios.length > 0 && ' ' + t("Showing the last fetched list.")}</p>}
@@ -138,7 +146,7 @@ export default function Dashboard({ scenarios, client, listing, listError, onRef
           </li>;
         })}</ul>
       </section>
-      <p className="overview-meta">{t("Checked")} <time dateTime={current.checked.toISOString()}>{current.checked.toLocaleTimeString(language)}</time> · {checked.length} {t("of")} {scenarios.length} {t("cases analyzed · Refreshes every minute")}</p>
+      <p className="overview-meta">{t("Checked")} <time dateTime={current.checked.toISOString()}>{current.checked.toLocaleTimeString(language)}</time> · {checked.length} {t("of")} {scenarios.length} {t("cases analyzed")}{autoRefresh && <> · {t("Refreshes every minute")}</>}</p>
     </div>}
     {missing.length > 0 && <div className="overview-note" role="alert"><strong>{t("Analysis unavailable")}</strong><ul className="case-queue">{missing.map(({ scenario }) => <li key={scenario.id}><strong>{t(scenario.label)}</strong><CaseActions scenario={scenario} /></li>)}</ul></div>}
     {!busy && !listError && !scenarios.length && <p className="overview-note">{t("No cases in the catalog.")}</p>}
