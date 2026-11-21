@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1917" />
+    <title>TraceGuard AI · จากหลักฐานสู่การป้องกัน</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./presentation.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <a href="#start" class="brand" aria-label="TraceGuard AI หน้าแรก"
+        ><span class="mark" aria-hidden="true">⌁</span>TraceGuard <b>AI</b></a
+      ><span class="event">SEA × OpenAI <span>/</span> Hackathon Thailand</span
+      ><a
+        class="hdr-demo"
+        href="https://traceguard-ai-ui.vercel.app/"
+        target="_blank"
+        rel="noopener noreferrer"
+        >เปิดระบบสาธิต ↗</a
+      >
+    </header>
+    <main>
+      <section id="start" aria-labelledby="question">
+        <div class="split">
+          <div>
+            <h1 id="question">
+              ก่อนส่งข้อมูล<br />รอบถัดไป<br /><em>ต้องแก้ตรงไหน?</em>
+            </h1>
+            <p class="lead">
+              คืนนี้ระบบส่งข้อมูลลูกค้าออกนอกบริษัท
+              ทั้งที่บริษัทอนุญาตให้ใช้ข้อมูลนี้ภายในเท่านั้น
+              ถ้าพรุ่งนี้ระบบจะส่งอีกครั้ง คุณจะตรวจตรงไหนก่อน?
+            </p>
+            <a class="btn" href="#evidence">ดูหลักฐาน <span>→</span></a>
+          </div>
+          <figure class="terminal">
+            <figcaption>
+              <span class="dot"></span>บันทึกเหตุการณ์
+              <small>ตัวอย่าง 3 รายการ</small>
+            </figcaption>
+            <div class="log">
+              <time>03:10:01</time><code>evt-001</code
+              ><strong>ระบบลูกค้า → ระบบฝ่ายขาย</strong><samp>ส่งข้อมูล</samp>
+            </div>
+            <div class="log">
+              <time>03:10:02</time><code>evt-002</code
+              ><strong>ระบบฝ่ายขาย</strong><samp>ประมวลผลข้อมูล</samp>
+            </div>
+            <div class="log">
+              <time>03:10:03</time><code>evt-003</code
+              ><strong>ระบบฝ่ายขาย → ระบบภายนอก</strong><samp>ส่งข้อมูล</samp>
+            </div>
+            <div class="terminal-foot">เวลาสากล <span>ข้อมูลจำลอง</span></div>
+          </figure>
+        </div>
+      </section>
+      <section id="evidence" hidden aria-labelledby="evidence-title">
+        <h2 id="evidence-title">ระบบไหน <em>ส่งข้อมูลออก?</em></h2>
+        <p class="lead">
+          บริษัทอนุญาตให้ระบบฝ่ายขายรับข้อมูลลูกค้า
+          และส่งต่อให้ระบบภายในที่กำหนดไว้
+        </p>
+        <div class="route">
+          <div><small>ต้นทาง</small><strong>ระบบลูกค้า</strong></div>
+          <span>→</span>
+          <div><small>ผู้ส่งออก</small><strong>ระบบฝ่ายขาย</strong></div>
+          <span>→</span>
+          <div class="flag">
+            <small>ปลายทางที่ห้ามส่ง</small
+            ><strong>ระบบดูแลลูกค้าภายนอก</strong>
+          </div>
+        </div>
+        <div class="finding">
+          <code>evt-003</code>
+          <div>
+            <b>ระบบฝ่ายขายส่งข้อมูลออกสำเร็จ</b>
+            <p>
+              บันทึกนี้ระบุผู้ส่ง ปลายทาง และผลว่า “ส่งสำเร็จ”
+              ทีมจึงรู้ว่าต้องตรวจการส่งออกจากระบบฝ่ายขาย
+            </p>
+          </div>
+        </div>
+        <a class="btn" href="#demo">ดูตัวอย่างในระบบ <span>→</span></a>
+      </section>
+      <section id="demo" hidden aria-labelledby="demo-title">
+        <div class="split">
+          <div>
+            <h2 id="demo-title">ดูตัวอย่าง<br /><em>ในระบบจริง</em></h2>
+            <p class="lead">
+              เลือกภาษาไทย แล้วเปิด “การโอนข้อมูลที่ไม่ได้รับอนุญาต” ดูรายการ
+              evt-003 จากนั้นเปิด “หลักฐานระหว่างทางไม่ครบ”
+              เพื่อดูว่าเรายังขาดข้อมูลอะไร
+            </p>
+            <a
+              class="btn"
+              href="https://traceguard-ai-ui.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >เปิดระบบสาธิต ↗</a
+            >
+            <p class="hint">เปิดในแท็บใหม่ · กลับแท็บนี้เพื่อดูร่างรายงาน</p>
+          </div>
+          <div class="preview">
+            <button id="preview" aria-label="ขยายภาพจากการซ้อม">
+              <img
+                id="thumb"
+                src="./assets/verified.jpg"
+                alt="ภาพจากการซ้อม แสดงเหตุการณ์ที่ยืนยันว่าระบบฝ่ายขายส่งข้อมูลออก"
+              /><span>ขยายภาพจากการซ้อม ↗</span>
+            </button>
+            <div class="switch" aria-label="เลือกภาพจากการซ้อม">
+              <button data-image="verified" aria-pressed="true">
+                ส่งสำเร็จ</button
+              ><button data-image="missing" aria-pressed="false">
+                ข้อมูลยังไม่ครบ
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="report" hidden aria-labelledby="report-title">
+        <div class="split">
+          <div>
+            <h2 id="report-title">เมื่อพบเหตุ<br /><em>ต้องรายงานอะไร?</em></h2>
+            <p class="lead">
+              ตามกฎหมายคุ้มครองข้อมูลส่วนบุคคลของสหภาพยุโรป
+              เมื่อทราบว่ามีเหตุละเมิด
+              ผู้ควบคุมข้อมูลต้องแจ้งหน่วยงานกำกับดูแลที่รับผิดชอบโดยไม่ชักช้า
+              และหากทำได้ ให้แจ้งภายใน 72 ชั่วโมง
+              เว้นแต่เหตุการณ์นั้นไม่น่าจะเสี่ยงต่อสิทธิและเสรีภาพของบุคคล
+            </p>
+            <p class="hint">
+              หากเหตุการณ์น่าจะทำให้เกิดความเสี่ยงสูง
+              โดยทั่วไปต้องแจ้งผู้ได้รับผลกระทบโดยไม่ชักช้าด้วย
+              <a
+                href="https://gdpr-info.eu/art-33-gdpr/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >มาตรา 33 การแจ้งหน่วยงาน ↗</a
+              ><br /><a
+                href="https://gdpr-info.eu/art-34-gdpr/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >มาตรา 34 การแจ้งผู้ได้รับผลกระทบ ↗</a
+              ><br /><a
+                href="https://gdpr-info.eu/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >อ่านกฎหมายฉบับเต็ม ↗</a
+              >
+            </p>
+          </div>
+          <article class="paper">
+            <small>ตัวอย่างร่างรายงาน · ข้อมูลจำลอง</small>
+            <h3>ระบบฝ่ายขายส่งข้อมูลลูกค้าออกนอกบริษัท</h3>
+            <dl>
+              <dt>หลักฐาน</dt>
+              <dd>evt-003 · ระบบฝ่ายขาย → ระบบดูแลลูกค้าภายนอก</dd>
+              <dt>ผลกระทบ</dt>
+              <dd>
+                ผู้รับภายนอกอาจเห็นข้อมูลลูกค้า
+                ทีมกำลังตรวจว่ามีข้อมูลของใครบ้างและมีกี่รายการ
+              </dd>
+              <dt>มาตรการที่เสนอ</dt>
+              <dd>พักการส่งไปยังปลายทางนี้ แล้วตรวจว่าทำไมระบบจึงส่งออกได้</dd>
+              <dt>ก่อนยื่น</dt>
+              <dd>
+                เติมเวลาที่ทราบเหตุ สิ่งที่ทำไปแล้ว
+                และชื่อกับช่องทางติดต่อของผู้ประสานงาน
+              </dd>
+            </dl>
+          </article>
+        </div>
+      </section>
+      <section id="prevention" hidden aria-labelledby="fix-title">
+        <h2 id="fix-title">
+          ก่อนส่งรอบพรุ่งนี้<br /><em>ตรวจที่ระบบฝ่ายขาย</em>
+        </h2>
+        <p class="lead">
+          ตรวจว่าระบบฝ่ายขายอนุญาตให้ส่งข้อมูลไปที่ไหนบ้าง ถ้าพบว่าตั้งค่าผิด
+          ให้แก้แล้วลองส่งข้อมูลจำลองสองครั้ง
+        </p>
+        <div class="tests">
+          <div>
+            <small>ปลายทางต้องห้าม</small><strong>ระบบดูแลลูกค้าภายนอก</strong
+            ><span>ผลที่ควรเห็น · ระบบปฏิเสธการส่ง</span>
+          </div>
+          <div>
+            <small>ปลายทางที่อนุญาต</small><strong>ระบบดูแลลูกค้าภายใน</strong
+            ><span>ผลที่ควรเห็น · ระบบส่งได้ตามปกติ</span>
+          </div>
+        </div>
+        <div class="qa">
+          <b>ถามตอบ</b> <a href="#evidence">ดูหลักฐาน</a
+          ><a href="#report">ดูร่างรายงาน</a
+          ><a
+            href="https://traceguard-ai-ui.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >เปิดระบบสาธิต ↗</a
+          >
+        </div>
+      </section>
+    </main>
+    <footer>
+      <nav aria-label="ลำดับการนำเสนอ">
+        <a href="#start">คำถาม</a><a href="#evidence">หลักฐาน</a
+        ><a href="#demo">สาธิต</a><a href="#report">รายงาน</a
+        ><a href="#prevention">ป้องกันเหตุซ้ำ</a>
+      </nav>
+      <div class="controls">
+        <button id="back" aria-label="หน้าก่อน">←</button
+        ><output id="count" aria-live="polite">1 / 5</output
+        ><button id="forward" aria-label="หน้าถัดไป">→</button>
+      </div>
+    </footer>
+    <dialog aria-label="ภาพจากการซ้อม">
+      <div class="dialog-head">
+        <strong id="caption"></strong><button id="close">ปิด ×</button>
+      </div>
+      <img id="large" alt="" />
+    </dialog>
+  </body>
+</html>
