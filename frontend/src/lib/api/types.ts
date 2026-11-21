@@ -94,3 +94,18 @@ export interface TraceGuardClient {
   analyze(request: AnalyzeRequest, signal?: AbortSignal): Promise<AnalyzeResponse>;
   explain(request: ExplainRequest, signal?: AbortSignal): Promise<ExplainResponse>;
 }
+
+export interface PrivacyDecisionRequest {
+  source_service: string;
+  destination_service: string;
+  data_categories: string[];
+  purpose: string;
+  policy_id: string;
+}
+
+export interface PrivacyDecisionResponse {
+  decision: "ALLOW" | "DENY" | "INDETERMINATE";
+  rule_id: string;
+  reason: string;
+  transfer_executed: boolean;
+}

@@ -203,6 +203,9 @@ type AnalyzeJSONRequestBody = AnalyzeRequest
 // ExplainJSONRequestBody defines body for Explain for application/json ContentType.
 type ExplainJSONRequestBody = ExplainRequest
 
+// CreatePrivacyDecisionJSONRequestBody defines body for CreatePrivacyDecision for application/json ContentType.
+type CreatePrivacyDecisionJSONRequestBody = PrivacyDecisionRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
@@ -211,6 +214,9 @@ type ServerInterface interface {
 
 	// (POST /api/v1/explain)
 	Explain(ctx echo.Context) error
+
+	// (POST /api/v1/privacy/decisions)
+	CreatePrivacyDecision(ctx echo.Context) error
 
 	// (GET /api/v1/scenarios)
 	ListScenarios(ctx echo.Context) error
@@ -239,6 +245,15 @@ func (w *ServerInterfaceWrapper) Explain(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.Explain(ctx)
+	return err
+}
+
+// CreatePrivacyDecision converts echo context to params.
+func (w *ServerInterfaceWrapper) CreatePrivacyDecision(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreatePrivacyDecision(ctx)
 	return err
 }
 
@@ -290,6 +305,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.POST(baseURL+"/api/v1/analyze", wrapper.Analyze)
 	router.POST(baseURL+"/api/v1/explain", wrapper.Explain)
+	router.POST(baseURL+"/api/v1/privacy/decisions", wrapper.CreatePrivacyDecision)
 	router.GET(baseURL+"/api/v1/scenarios", wrapper.ListScenarios)
 	router.GET(baseURL+"/healthz", wrapper.Healthz)
 
