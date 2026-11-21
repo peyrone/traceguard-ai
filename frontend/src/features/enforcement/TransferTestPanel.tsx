@@ -7,11 +7,12 @@ const transferCases = [
 ];
 
 interface Props {
+  defaultCase?: "internal" | "external";
   decide: (request: PrivacyDecisionRequest, signal?: AbortSignal) => Promise<PrivacyDecisionResponse>;
 }
 
-export function TransferTestPanel({ decide }: Props) {
-  const [selected, setSelected] = useState(0);
+export function TransferTestPanel({ decide, defaultCase = "internal" }: Props) {
+  const [selected, setSelected] = useState(defaultCase === "external" ? 1 : 0);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<PrivacyDecisionResponse>();
   const [error, setError] = useState("");

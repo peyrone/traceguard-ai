@@ -104,6 +104,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
     }
   }
 
+  const defaultTransferCase = analysis?.summary.status === "VERIFIED_VIOLATION" ? "external" : "internal";
   const graph = analysis?.graph;
   const selectedFinding = analysis?.findings.find((finding) => finding.id === selectedFindingId);
   const highlightedEdgeIds = graph ? getHighlightedEdgeIds(graph, selectedFinding?.evidence_event_ids ?? []) : [];
@@ -125,7 +126,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
         <p>Synthetic audit data · API mode</p>
       </header>
 
-      <TransferTestPanel decide={client.decidePrivacy} />
+      <TransferTestPanel key={scenarioID + ":" + defaultTransferCase} defaultCase={defaultTransferCase} decide={client.decidePrivacy} />
 
       <section className="scenario-controls" aria-label="Scenario controls">
         <label htmlFor="scenario">Scenario</label>
