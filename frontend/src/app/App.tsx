@@ -2,32 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 
 import { InvestigationPanel, statusLabels } from '../features/investigation/InvestigationPanel';
 import { LineageGraph } from '../features/lineage/LineageGraph';
-import type { Graph } from '../features/lineage/flow-elements';
-import { api, hasConfiguredBackend, type Analysis, type Explanation, type Scenario } from '../lib/api/client';
-
-const demoGraph: Graph = {
-  nodes: [
-    { id: 'customer-api', label: 'Customer API', kind: 'internal' },
-    { id: 'sales-api', label: 'Sales API', kind: 'internal' },
-    { id: 'external-crm', label: 'External CRM', kind: 'external' },
-  ],
-  edges: [
-    {
-      id: 'upstream-link',
-      source: 'customer-api',
-      target: 'sales-api',
-      evidence_status: 'INFERRED',
-      evidence_event_ids: [],
-    },
-    {
-      id: 'external-transfer',
-      source: 'sales-api',
-      target: 'external-crm',
-      evidence_status: 'OBSERVED',
-      evidence_event_ids: ['evt-003'],
-    },
-  ],
-};
+import { NodeDetails } from '../features/lineage/NodeDetails';
+import { getHighlightedEdgeIds } from '../features/lineage/flow-elements';
+import { api, type Analysis, type Explanation, type Scenario } from '../lib/api/client';
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unknown error.';
@@ -126,15 +103,25 @@ export default function App() {
     }
   }
 
-  const preview = !hasConfiguredBackend && listError !== null;
-  const graph = analysis?.graph ?? (preview ? demoGraph : null);
-  const selectedNode = graph?.nodes.find((node) => node.id === selectedNodeId);
+  const graph = analysis?.graph;
+  const selectedFinding = analysis?.findings.find((finding) => finding.id === selectedFindingId);
+  const highlightedEdgeIds = graph ? getHighlightedEdgeIds(graph, selectedFinding?.evidence_event_ids ?? []) : [];
+
+  function analyzeScenario() {
+    resetExplanation();
+    setAnalysis(null);
+    setSelectedFindingId(null);
+    setSelectedNodeId(null);
+    setAnalysisError(null);
+    setAnalyzing(true);
+    setRetryAnalysis((attempt) => attempt + 1);
+  }
 
   return (
     <main>
       <header className="app-header">
         <h1>TraceGuard AI</h1>
-        <p>Synthetic audit data</p>
+        <p>Synthetic audit data · API mode</p>
       </header>
 
       <section className="scenario-controls" aria-label="Scenario controls">
@@ -160,26 +147,22 @@ export default function App() {
         {analysisError && (
           <>
             <p role="alert">Unable to analyze this scenario. {analysisError}</p>
-            <button type="button" onClick={() => {
-              setAnalyzing(true);
-              setAnalysisError(null);
-              setRetryAnalysis((attempt) => attempt + 1);
-            }}>Retry analysis</button>
+            <button type="button" disabled={analyzing} onClick={analyzeScenario}>Retry analysis</button>
           </>
         )}
         {analysis && <p role="status">{statusLabels[analysis.summary.status]} · {analysis.summary.events_processed} events processed</p>}
+        {analysis?.summary.status === 'NO_VIOLATION_OBSERVED' && <p>Available events do not prove compliance.</p>}
       </section>
 
+      <div className="workspace-grid">
       {graph && (
         <section className="graph-panel" aria-labelledby="graph-title">
           <header className="panel-header">
-            <h2 id="graph-title">{preview ? 'Service lineage preview' : 'Service lineage'}</h2>
+            <h2 id="graph-title">Service lineage</h2>
             <p>Solid links show observed transfers. Dashed links show inferred relationships.</p>
           </header>
-          <LineageGraph graph={graph} selectedFindingId={selectedFindingId} onSelectNode={setSelectedNodeId} />
-          <footer className="panel-footer" aria-live="polite">
-            {selectedNode ? `Selected service: ${selectedNode.label}` : 'Select a service to inspect it.'}
-          </footer>
+          <LineageGraph graph={graph} selectedFindingId={selectedFindingId} onSelectNode={setSelectedNodeId} highlightedEdgeIds={highlightedEdgeIds} />
+          <NodeDetails graph={graph} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />
         </section>
       )}
       {analysis && (
@@ -197,6 +180,7 @@ export default function App() {
           onExplain={() => void explainFinding()}
         />
       )}
+      </div>
     </main>
   );
 }

@@ -11,15 +11,50 @@ export interface Graph {
   }[];
 }
 
-export function toFlowElements(graph: Graph): { nodes: Node[]; edges: Edge[] } {
-  const nodes: Node[] = graph.nodes.map(({ id, label, kind }, index) => ({
+export function getHighlightedEdgeIds(graph: Graph, evidenceEventIds: readonly string[]): string[] {
+  const evidence = new Set(evidenceEventIds);
+  return graph.edges.filter((edge) => edge.evidence_event_ids.some((id) => evidence.has(id))).map((edge) => edge.id).sort();
+}
+
+export function toFlowElements(graph: Graph, highlightedEdgeIds: readonly string[] = []): { nodes: Node[]; edges: Edge[] } {
+  const highlighted = new Set(highlightedEdgeIds);
+  const endpoints = new Set(graph.edges.filter((edge) => highlighted.has(edge.id)).flatMap((edge) => [edge.source, edge.target]));
+  const ordered = [...graph.nodes].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const incoming = new Map(ordered.map(({ id }) => [id, 0]));
+  const outgoing = new Map(ordered.map(({ id }) => [id, [] as string[]]));
+  for (const edge of graph.edges) {
+    if (!incoming.has(edge.source) || !incoming.has(edge.target)) continue;
+    incoming.set(edge.target, incoming.get(edge.target)! + 1);
+    outgoing.get(edge.source)!.push(edge.target);
+  }
+  const columns = new Map(ordered.map(({ id }) => [id, 0]));
+  const queue = ordered.filter(({ id }) => incoming.get(id) === 0).map(({ id }) => id);
+  while (queue.length) {
+    const id = queue.shift()!;
+    for (const target of outgoing.get(id)!.sort()) {
+      columns.set(target, Math.max(columns.get(target)!, columns.get(id)! + 1));
+      incoming.set(target, incoming.get(target)! - 1);
+      if (incoming.get(target) === 0) queue.push(target);
+    }
+    queue.sort();
+  }
+  // Cyclic components use separate rows rather than claiming a causal order.
+  for (const { id } of ordered) if (incoming.get(id)! > 0) columns.set(id, 0);
+  const rows = new Map<number, number>();
+  const nodes: Node[] = ordered.map(({ id, label, kind }) => {
+    const column = columns.get(id)!;
+    const row = rows.get(column) ?? 0;
+    rows.set(column, row + 1);
+    return {
     id,
-    data: { label },
+    selected: endpoints.has(id),
+    data: { label: kind === 'external' ? `${label} · External` : label },
     className: kind === 'external' ? 'lineage-node--external' : undefined,
-    position: { x: index * 320, y: 0 },
+    position: { x: column * 320, y: row * 180 },
     sourcePosition: Position.Right,
     targetPosition: Position.Left,
-  }));
+    };
+  });
 
   const edges: Edge[] = graph.edges.map((edge) => {
     const observed = edge.evidence_status === 'OBSERVED';
@@ -28,6 +63,7 @@ export function toFlowElements(graph: Graph): { nodes: Node[]; edges: Edge[] } {
 
     return {
       id: edge.id,
+      selected: highlighted.has(edge.id),
       source: edge.source,
       target: edge.target,
       label,

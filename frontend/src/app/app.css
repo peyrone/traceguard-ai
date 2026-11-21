@@ -10,7 +10,7 @@ body {
 }
 
 main {
-  width: min(1080px, calc(100% - 32px));
+  width: min(1440px, calc(100% - 32px));
   margin: 0 auto;
   padding: clamp(24px, 6vw, 72px) 0;
 }
@@ -125,3 +125,15 @@ main button[aria-pressed="true"] {
 main [role="alert"] {
   color: #922c27;
 }
+
+.workspace-grid { display: grid; gap: 20px; align-items: start; }
+.workspace-grid > * { min-width: 0; }
+.workspace-grid .investigation-panel { margin: 0; }
+.node-details { display: grid; gap: 12px; padding: 20px; border-top: 1px solid #dce5e7; }
+.node-details select { width: 100%; min-height: 44px; font: inherit; }
+.node-details p, .node-details li, .finding-detail { overflow-wrap: anywhere; line-height: 1.6; }
+.node-details li + li { margin-top: 16px; }
+main :focus-visible { outline: 3px solid #21675c; outline-offset: 3px; }
+main button, main select { min-height: 44px; }
+main button:disabled { opacity: .6; }
+@media (min-width: 1100px) { .workspace-grid { grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr); } }
