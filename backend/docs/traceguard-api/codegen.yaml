@@ -3,3 +3,7 @@ output: cmd/traceguard-api/handlers/http/api_gen/api.gen.go
 generate:
   models: true
   echo-server: true
+output-options:
+  # Publish models in the contract stage. Enable this route with its handler.
+  exclude-operation-ids: [CreatePrivacyDecision]
+  skip-prune: true
