@@ -61,3 +61,65 @@ header p {
   color: #496167;
   font-size: 14px;
 }
+
+.scenario-controls,
+.investigation-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.investigation-panel {
+  margin-top: 20px;
+  padding: 16px clamp(16px, 3vw, 24px);
+  border: 1px solid #c0ced0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.scenario-controls label {
+  font-weight: 600;
+}
+
+.scenario-controls select,
+main button {
+  width: fit-content;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #8ca5a9;
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+main button:not(:disabled) {
+  cursor: pointer;
+}
+
+main button[aria-pressed="true"] {
+  border-color: #21675c;
+  background: #dcece8;
+}
+
+.finding-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finding-detail {
+  display: grid;
+  gap: 12px;
+}
+
+.finding-detail section p + p {
+  margin-top: 8px;
+}
+
+main [role="alert"] {
+  color: #922c27;
+}
