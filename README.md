@@ -1,5 +1,7 @@
 # TraceGuard AI
 
+![TraceGuard AI logo banner](docs/assets/traceguard-ai-banner.png)
+
 [Live demo](https://traceguard-ai-ui.vercel.app/) · [GitHub Pages](https://peyrone.github.io/traceguard-ai/)
 
 TraceGuard AI reconstructs service-to-service data lineage from synthetic audit events and flags transfers that may breach a privacy policy. The graph and findings cite supporting audit event IDs and show where evidence is missing.
