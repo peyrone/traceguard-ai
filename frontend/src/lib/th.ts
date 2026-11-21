@@ -1,4 +1,9 @@
 export const thai: Readonly<Record<string, string>> = {
+  "Explanation service unavailable. This summary uses the loaded case evidence.": "ติดต่อระบบอธิบายผลไม่ได้ สรุปนี้อ้างอิงหลักฐานของเคสที่โหลดไว้",
+  "Collect the missing audit records.": "รวบรวมบันทึกการตรวจสอบที่ยังขาด",
+  "Review the supporting audit events.": "ตรวจสอบเหตุการณ์ที่ใช้สนับสนุนผลการวิเคราะห์",
+  "Check the destination and purpose against the policy allowlists.": "ตรวจสอบปลายทางและวัตถุประสงค์กับรายการที่นโยบายอนุญาต",
+  "No finding details were returned for this case.": "ระบบไม่ได้ส่งรายละเอียดประเด็นที่พบสำหรับเคสนี้",
   "Dashboard": "แดชบอร์ด",
   "Report": "รายงาน",
   "Workspace": "พื้นที่ตรวจสอบ",

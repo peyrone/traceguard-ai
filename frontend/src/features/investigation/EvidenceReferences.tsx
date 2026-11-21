@@ -1,5 +1,5 @@
 import { useLanguage } from '../../lib/language';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { Finding, Graph, GraphEdge } from '../../lib/api/types';
 
 import { Icon } from '../../components/Icon';
@@ -69,30 +69,41 @@ export function EvidenceReferences({ references, graph, selectedFindingId, onIns
   </section>;
 }
 
-export function ReferenceDialog({ item, graph, onClose }: {
-  item: EvidenceReference;
-  graph: Graph;
+export function EvidenceDialog({ title, onClose, children }: {
+  title: string;
   onClose: () => void;
+  children: ReactNode;
 }) {
   const { t } = useLanguage();
+  const titleId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const element = dialog.current!;
     element.showModal();
     return () => { if (element.open) element.close(); };
   }, []);
-  const labels = new Map(graph.nodes.map(node => [node.id, node.label]));
-  return <dialog ref={dialog} aria-labelledby="reference-title" onClose={event => {
+  return <dialog ref={dialog} aria-labelledby={titleId} onClose={event => {
     if (!event.currentTarget.open) onClose();
   }}>
-    <header className="panel-heading"><h2 id="reference-title">{t("Evidence reference")}</h2>
+    <header className="panel-heading"><h2 id={titleId}>{title}</h2>
       <button type="button" aria-label={t("Close evidence details")} onClick={() => dialog.current?.close()}>{t("Close")}</button></header>
-    <div className="inset dialog-body"><code>{item.id}</code><h3>{t("Service links")}</h3>
+    <div className="inset dialog-body">{children}</div>
+  </dialog>;
+}
+
+export function ReferenceDialog({ item, graph, onClose }: {
+  item: EvidenceReference;
+  graph: Graph;
+  onClose: () => void;
+}) {
+  const { t } = useLanguage();
+  const labels = new Map(graph.nodes.map(node => [node.id, node.label]));
+  return <EvidenceDialog title={t("Evidence reference")} onClose={onClose}>
+    <code>{item.id}</code><h3>{t("Service links")}</h3>
       {item.edges.length === 0 ? <p>{t("No related service link was returned.")}</p> : <ul>{item.edges.map(edge =>
         <li key={edge.id}><ServiceRoute edge={edge} labels={labels} /><code>{edge.id}</code></li>)}</ul>}
       <h3>{t("Related findings")}</h3>
       {item.findings.length === 0 ? <p>{t("No finding cites this reference.")}</p> : <ul>{item.findings.map(finding =>
         <li key={finding.id}><code>{finding.rule_id}</code><p>{t(finding.message)}</p></li>)}</ul>}
-    </div>
-  </dialog>;
+  </EvidenceDialog>;
 }

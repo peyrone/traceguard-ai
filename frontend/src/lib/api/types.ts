@@ -118,10 +118,13 @@ export interface ExplainResponse {
   gdpr_mappings?: GDPRMapping[];
 }
 
+// Browser-generated summaries are distinguished from server responses in the UI.
+export type Explanation = ExplainResponse & { localFallback?: boolean };
+
 export interface TraceGuardClient {
   listScenarios(signal?: AbortSignal): Promise<Scenario[]>;
   analyze(request: AnalyzeRequest, signal?: AbortSignal): Promise<AnalyzeResponse>;
-  explain(request: ExplainRequest, signal?: AbortSignal): Promise<ExplainResponse>;
+  explain(request: ExplainRequest, signal?: AbortSignal): Promise<Explanation>;
 }
 
 export interface PrivacyDecisionRequest {

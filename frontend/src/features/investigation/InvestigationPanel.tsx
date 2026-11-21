@@ -1,6 +1,6 @@
 import { useLanguage } from '../../lib/language';
 import { useState, type ReactNode } from "react";
-import type { ExplainResponse, Finding, Graph } from "../../lib/api/types.ts";
+import type { Explanation, Finding, Graph } from "../../lib/api/types.ts";
 import { EvidencePanel } from "./EvidencePanel.tsx";
 import { ExplanationContent, ExplanationPanel, type RequestExplanation } from "./ExplanationPanel.tsx";
 import { FindingsPanel } from "./FindingsPanel.tsx";
@@ -22,7 +22,7 @@ interface ControlledExplanationProps {
   finding?: Finding;
   relatedEvidence?: ReactNode;
   onExplain: () => void;
-  explanation: ExplainResponse | null;
+  explanation: Explanation | null;
   explanationError: string | null;
   explaining: boolean;
   onInspect?: (id: string) => void;

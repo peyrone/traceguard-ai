@@ -2,13 +2,13 @@ import { useLanguage } from '../../lib/language';
 import { Icon } from "../../components/Icon";
 import { EvidenceId } from "./EvidenceId";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import type { ExplainResponse, Finding } from "../../lib/api/types.ts";
+import type { Explanation, Finding } from "../../lib/api/types.ts";
 
-export type RequestExplanation = (finding: Finding, signal: AbortSignal) => Promise<ExplainResponse>;
+export type RequestExplanation = (finding: Finding, signal: AbortSignal) => Promise<Explanation>;
 
 type ExplanationState =
   | { status: "loading" }
-  | { status: "ready"; result: ExplainResponse }
+  | { status: "ready"; result: Explanation }
   | { status: "error"; message: string };
 
 interface ExplanationContentProps {
@@ -81,7 +81,8 @@ export function ExplanationContent({ state, onExplain, onInspect, finding, relat
         </>}
         {state?.status === "ready" && (
           <div className="tg-explanation-result" aria-live="polite">
-            <p>{state.result.explanation}</p>
+            {state.result.localFallback && <p>{t("Explanation service unavailable. This summary uses the loaded case evidence.")}</p>}
+            <p>{state.result.localFallback ? t(state.result.explanation) : state.result.explanation}</p>
             {state.result.evidence_event_ids.length > 0 && (
               <ul className="tg-event-ids" aria-label={t("Cited audit events")}>
                 {state.result.evidence_event_ids.map((id) => <li key={id}><EvidenceId id={id} onInspect={onInspect} /></li>)}
@@ -100,6 +101,10 @@ export function ExplanationContent({ state, onExplain, onInspect, finding, relat
                     </li>
                   ))}
                 </ul>
+              </>
+            )}
+            {(state.result.gdpr_mappings?.length || state.result.insights?.length) ? (
+              <>
                 <h3>{t("GDPR considerations")}</h3>
                 <p>{t("These assessments flag questions for review. The internal policy verdict addresses the scenario’s configured rules.")}</p>
                 {state.result.gdpr_mappings?.length ? (
@@ -118,14 +123,15 @@ export function ExplanationContent({ state, onExplain, onInspect, finding, relat
                   </ul>
                 ) : <p>{t("The available evidence supports no specific GDPR mapping or conclusion about compliance.")}</p>}
               </>
-            )}
+            ) : null}
             <div className="explain-steps" data-mode={state.result.mode}>
               <h3 className="tg-explanation-mode"><Icon name={fallback ? "index" : "sparkles"} size={16} />
                 {fallback ? t("Rule-based fallback") : t("AI-prioritized next steps")}</h3>
               {state.result.next_steps.length > 0 && <ol className="tg-detail-list" aria-label={t("Next steps")}>
-                {state.result.next_steps.map((step, index) => <li key={index}>{step}</li>)}
+                {state.result.next_steps.map((step, index) => <li key={index}>{state.result.localFallback ? t(step) : step}</li>)}
               </ol>}
             </div>
+            {state.result.localFallback && <button type="button" onClick={onExplain}>{t("Retry explanation")}</button>}
           </div>
         )}
         {relatedEvidence}
