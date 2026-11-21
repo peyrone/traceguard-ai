@@ -24,8 +24,8 @@ const (
 
 // Defines values for ExplainResponseMode.
 const (
-	Ai       ExplainResponseMode = "ai"
-	Fallback ExplainResponseMode = "fallback"
+	ExplainResponseModeAi       ExplainResponseMode = "ai"
+	ExplainResponseModeFallback ExplainResponseMode = "fallback"
 )
 
 // Defines values for GDPRMappingAssessment.
@@ -36,9 +36,9 @@ const (
 
 // Defines values for InvestigationInsightKind.
 const (
-	Observation   InvestigationInsightKind = "observation"
-	PolicyConcern InvestigationInsightKind = "policy_concern"
-	Uncertainty   InvestigationInsightKind = "uncertainty"
+	InvestigationInsightKindObservation   InvestigationInsightKind = "observation"
+	InvestigationInsightKindPolicyConcern InvestigationInsightKind = "policy_concern"
+	InvestigationInsightKindUncertainty   InvestigationInsightKind = "uncertainty"
 )
 
 // Defines values for PrivacyDecisionResponseDecision.
@@ -46,6 +46,32 @@ const (
 	ALLOW         PrivacyDecisionResponseDecision = "ALLOW"
 	DENY          PrivacyDecisionResponseDecision = "DENY"
 	INDETERMINATE PrivacyDecisionResponseDecision = "INDETERMINATE"
+)
+
+// Defines values for ReportAudience.
+const (
+	Engineering ReportAudience = "engineering"
+	Executive   ReportAudience = "executive"
+)
+
+// Defines values for ReportLanguage.
+const (
+	En ReportLanguage = "en"
+	Th ReportLanguage = "th"
+)
+
+// Defines values for ReportSectionKind.
+const (
+	ReportSectionKindAction      ReportSectionKind = "action"
+	ReportSectionKindConclusion  ReportSectionKind = "conclusion"
+	ReportSectionKindRoute       ReportSectionKind = "route"
+	ReportSectionKindUncertainty ReportSectionKind = "uncertainty"
+)
+
+// Defines values for ReportSummaryMode.
+const (
+	ReportSummaryModeAi       ReportSummaryMode = "ai"
+	ReportSummaryModeFallback ReportSummaryMode = "fallback"
 )
 
 // Defines values for Status.
@@ -240,6 +266,43 @@ type PrivacyDecisionResponse struct {
 // PrivacyDecisionResponseDecision defines model for PrivacyDecisionResponse.Decision.
 type PrivacyDecisionResponseDecision string
 
+// ReportAudience defines model for ReportAudience.
+type ReportAudience string
+
+// ReportLanguage defines model for ReportLanguage.
+type ReportLanguage string
+
+// ReportSection defines model for ReportSection.
+type ReportSection struct {
+	EvidenceEventIds []string          `json:"evidence_event_ids"`
+	Kind             ReportSectionKind `json:"kind"`
+	RuleId           *string           `json:"rule_id,omitempty"`
+	Text             string            `json:"text"`
+}
+
+// ReportSectionKind defines model for ReportSection.Kind.
+type ReportSectionKind string
+
+// ReportSummary defines model for ReportSummary.
+type ReportSummary struct {
+	Audience   ReportAudience    `json:"audience"`
+	Language   ReportLanguage    `json:"language"`
+	Mode       ReportSummaryMode `json:"mode"`
+	ScenarioId string            `json:"scenario_id"`
+	Sections   []ReportSection   `json:"sections"`
+	Status     Status            `json:"status"`
+}
+
+// ReportSummaryMode defines model for ReportSummary.Mode.
+type ReportSummaryMode string
+
+// ReportSummaryRequest defines model for ReportSummaryRequest.
+type ReportSummaryRequest struct {
+	Audience   ReportAudience `json:"audience"`
+	Language   ReportLanguage `json:"language"`
+	ScenarioId string         `json:"scenario_id"`
+}
+
 // Scenario defines model for Scenario.
 type Scenario struct {
 	Id    string `json:"id"`
@@ -283,6 +346,9 @@ type ExplainJSONRequestBody = ExplainRequest
 // CreatePrivacyDecisionJSONRequestBody defines body for CreatePrivacyDecision for application/json ContentType.
 type CreatePrivacyDecisionJSONRequestBody = PrivacyDecisionRequest
 
+// CreateReportSummaryJSONRequestBody defines body for CreateReportSummary for application/json ContentType.
+type CreateReportSummaryJSONRequestBody = ReportSummaryRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
@@ -294,6 +360,9 @@ type ServerInterface interface {
 
 	// (POST /api/v1/privacy/decisions)
 	CreatePrivacyDecision(ctx echo.Context) error
+
+	// (POST /api/v1/report-summary)
+	CreateReportSummary(ctx echo.Context) error
 
 	// (GET /api/v1/scenarios)
 	ListScenarios(ctx echo.Context) error
@@ -331,6 +400,15 @@ func (w *ServerInterfaceWrapper) CreatePrivacyDecision(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreatePrivacyDecision(ctx)
+	return err
+}
+
+// CreateReportSummary converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateReportSummary(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateReportSummary(ctx)
 	return err
 }
 
@@ -383,6 +461,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/api/v1/analyze", wrapper.Analyze)
 	router.POST(baseURL+"/api/v1/explain", wrapper.Explain)
 	router.POST(baseURL+"/api/v1/privacy/decisions", wrapper.CreatePrivacyDecision)
+	router.POST(baseURL+"/api/v1/report-summary", wrapper.CreateReportSummary)
 	router.GET(baseURL+"/api/v1/scenarios", wrapper.ListScenarios)
 	router.GET(baseURL+"/healthz", wrapper.Healthz)
 

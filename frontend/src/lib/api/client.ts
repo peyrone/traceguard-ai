@@ -1,6 +1,6 @@
 import { createExplainRequest, evidenceIdsForRequest, localExplanation } from "./explanation.ts";
-import { isAnalyzeResponse, isErrorResponse, isExplainResponse, isPrivacyDecisionResponse, isScenarioList } from "./response.ts";
-import type { Finding, PrivacyDecisionRequest, PrivacyDecisionResponse, TraceGuardClient } from "./types.ts";
+import { isAnalyzeResponse, isCaseSummary, isErrorResponse, isExplainResponse, isPrivacyDecisionResponse, isScenarioList } from "./response.ts";
+import type { CaseSummary, ReportRequest, Finding, PrivacyDecisionRequest, PrivacyDecisionResponse, TraceGuardClient } from "./types.ts";
 
 export type { AnalysisStatus as Status, AnalyzeResponse as Analysis, Explanation, Finding, Scenario } from "./types.ts";
 
@@ -37,10 +37,15 @@ interface ClientOptions {
   fetch?: typeof fetch;
 }
 
+interface ServerClient extends TraceGuardClient {
+  reportSummary(input: ReportRequest, signal: AbortSignal): Promise<CaseSummary>;
+  decidePrivacy(input: PrivacyDecisionRequest, signal?: AbortSignal): Promise<PrivacyDecisionResponse>;
+}
+
 export function createTraceGuardClient({
   baseUrl = "",
   fetch: fetchRequest = globalThis.fetch.bind(globalThis),
-}: ClientOptions = {}): TraceGuardClient & { decidePrivacy(input: PrivacyDecisionRequest, signal?: AbortSignal): Promise<PrivacyDecisionResponse> } {
+}: ClientOptions = {}): ServerClient {
   const prefix = versionedBaseURL(baseUrl);
 
   async function request<T>(
@@ -68,6 +73,8 @@ export function createTraceGuardClient({
   }
 
   return {
+    reportSummary: (input, signal) => request("/report-summary", isCaseSummary,
+      AbortSignal.any([signal, AbortSignal.timeout(explanationDeadlineMs)]), input),
     listScenarios: (signal) => request("/scenarios", isScenarioList, signal),
     analyze: (input, signal) => request("/analyze", isAnalyzeResponse, signal, input),
     decidePrivacy: (input, signal) => request("/privacy/decisions", isPrivacyDecisionResponse, signal, input),
@@ -92,6 +99,7 @@ export function createApiClient(baseURL = configuredBaseURL) {
   const client = createTraceGuardClient({ baseUrl: baseURL.trim() || localBaseURL });
   return {
     listScenarios: client.listScenarios,
+    reportSummary: client.reportSummary,
     decidePrivacy: client.decidePrivacy,
     analyze: (scenarioID: string, signal: AbortSignal) =>
       client.analyze({ scenario_id: scenarioID }, signal),

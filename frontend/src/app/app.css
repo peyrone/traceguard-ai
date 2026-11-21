@@ -354,3 +354,30 @@ dialog::backdrop { background: #17102190; }
   .language-toggle { margin-left: auto; }
   .nav-inner .data-source { order: 1; flex-basis: 100%; max-width: none; }
 }
+
+.edition-controls { margin-block: 20px; padding: clamp(14px, 3vw, 22px); border: 1px solid var(--border); border-radius: 12px; background: var(--page); }
+.edition-controls h3 { font-size: 1.05rem; margin: 0 0 10px; }
+.edition-options, .edition-result footer { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; }
+.edition-options fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }
+.edition-options legend { color: var(--muted); font-size: .83rem; margin-bottom: 4px; }
+.edition-segment { display: flex; flex-wrap: wrap; gap: 3px; }
+.edition-segment button { min-height: 40px; padding: 6px 11px; font: inherit; font-size: .9rem; border-radius: 8px; color: var(--ink); background: var(--panel); border: 1px solid var(--border); cursor: pointer; }
+.edition-segment button[aria-pressed="true"] { border-color: var(--accent); background: var(--soft); color: var(--accent); font-weight: 650; }
+.edition-result { margin-top: 20px; overflow-wrap: anywhere; }
+.edition-result header { border-bottom: 2px solid var(--accent); padding-bottom: 12px; }
+.edition-result h3 { margin: 2px 0; font-size: 1.65rem; }
+.edition-result header .review-status { margin-top: 8px; }
+.edition-group { margin: 16px 0; }
+.edition-group h4 { margin: 0 0 5px; font-size: 1rem; color: var(--accent); }
+.edition-group ul { padding: 0; margin: 0; list-style: none; }
+.edition-group li + li { margin-top: 8px; }
+.edition-citations { display: flex; flex-wrap: wrap; gap: 0 10px; font-size: .76rem; color: var(--muted); }
+.edition-source { font-size: .85rem; color: var(--muted); border-top: 1px solid var(--border); padding-top: 8px; }
+.edition-result footer { margin-top: 12px; }
+.report-paper:has(.edition-result) > :is(.report-block, .report-mast, .report-scope) { display: none; }
+@media print {
+  .edition-controls, .report-paper:has(.edition-result) .report-print-title { display: none; }
+  .edition-result { margin: 0; font-size: 10pt; }
+  .edition-group h4 { break-after: avoid; }
+  .edition-group li { break-inside: avoid; }
+}

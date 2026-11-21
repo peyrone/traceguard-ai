@@ -80,7 +80,10 @@ func (c *Client) Suggest(ctx context.Context, input investigation.Request) (inve
 	}
 	prompt := instructions
 	format := json.RawMessage(`{"type":"json_object"}`)
-	if input.Review != nil {
+	if input.Audience != "" {
+		prompt = "Rank every applicable_step_id exactly once for this case report. For executives prioritize decisions and accountable owners. For engineers prioritize evidence collection and checks. Preserve status and return every supplied evidence ref exactly once. Return only status, evidence_refs and step_ids. Never generate claims or prose."
+		format = json.RawMessage(`{"type":"json_schema","json_schema":{"name":"report_priority","strict":true,"schema":{"type":"object","additionalProperties":false,"required":["status","evidence_refs","step_ids"],"properties":{"status":{"type":"string"},"evidence_refs":{"type":"array","items":{"type":"string"}},"step_ids":{"type":"array","items":{"type":"string"}}}}}}`)
+	} else if input.Review != nil {
 		prompt += reviewInstructions
 		format = reviewResponseFormat
 	}

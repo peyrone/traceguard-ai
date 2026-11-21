@@ -26,6 +26,7 @@ type EvidenceMetadata struct {
 }
 
 type Request struct {
+	Audience          string             `json:"audience,omitempty"`
 	Status            entities.Status    `json:"status"`
 	Evidence          []EvidenceMetadata `json:"evidence"`
 	Rule              string             `json:"rule,omitempty"`

@@ -186,3 +186,25 @@ func TestQuotaErrorIsNotRetried(t *testing.T) {
 		}
 	})
 }
+
+func TestReportRankingUsesStrictStructuredOutput(t *testing.T) {
+	client := &http.Client{Transport: transportFunc(func(req *http.Request) (*http.Response, error) {
+		var payload struct {
+			Format struct {
+				Type   string
+				Schema struct {
+					Name   string
+					Strict bool
+				} `json:"json_schema"`
+			} `json:"response_format"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil || payload.Format.Type != "json_schema" || !payload.Format.Schema.Strict || payload.Format.Schema.Name != "report_priority" {
+			t.Fatal(payload, err)
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"choices":[{"message":{"content":"{\"status\":\"INCONCLUSIVE\",\"evidence_refs\":[\"E1\"],\"step_ids\":[\"collect_records\",\"check_policy\"]}"},"finish_reason":"stop"}]}`))}, nil
+	})}
+	_, err := New("test", "test", time.Second, client).Suggest(t.Context(), investigation.Request{Audience: "engineering"})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

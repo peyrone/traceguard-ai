@@ -1,5 +1,6 @@
 import type {
   AnalysisStatus,
+  CaseSummary,
   AnalyzeResponse,
   ExplainResponse,
   GDPRMapping,
@@ -107,4 +108,15 @@ export function isPrivacyDecisionResponse(value: unknown): value is PrivacyDecis
     isString(value.rule_id) && isString(value.reason) &&
     typeof value.transfer_executed === "boolean" &&
     (value.decision === "ALLOW" || !value.transfer_executed);
+}
+
+export function isCaseSummary(value: unknown): value is CaseSummary {
+  return isObject(value) && isString(value.scenario_id) && isStatus(value.status)
+    && (value.audience === "executive" || value.audience === "engineering")
+    && (value.language === "en" || value.language === "th")
+    && (value.mode === "ai" || value.mode === "fallback")
+    && Array.isArray(value.sections) && value.sections.length > 0
+    && value.sections.every(s => isObject(s) && ["conclusion", "uncertainty", "action", "route"].includes(String(s.kind))
+      && isString(s.text) && s.text.trim() !== "" && isList(s.evidence_event_ids, isString)
+      && (s.rule_id === undefined || isString(s.rule_id)));
 }

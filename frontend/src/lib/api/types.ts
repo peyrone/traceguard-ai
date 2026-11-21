@@ -138,3 +138,22 @@ export interface PrivacyDecisionResponse {
   reason: string;
   transfer_executed: boolean;
 }
+
+export interface ReportRequest {
+  scenario_id: string;
+  audience: "executive" | "engineering";
+  language: "en" | "th";
+}
+
+export interface ReportSection {
+  kind: "conclusion" | "uncertainty" | "route" | "action";
+  text: string;
+  evidence_event_ids: string[];
+  rule_id?: string;
+}
+
+export interface CaseSummary extends ReportRequest {
+  status: AnalysisStatus;
+  mode: "ai" | "fallback";
+  sections: ReportSection[];
+}
