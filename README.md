@@ -1,5 +1,7 @@
 # TraceGuard AI
 
+![น้องแกะรอย, the TraceGuard AI pangolin detective](docs/assets/traceguard-mascot.png)
+
 ![TraceGuard AI logo banner](docs/assets/traceguard-ai-banner.png)
 
 [Live demo](https://traceguard-ai-ui.vercel.app/) · [GitHub Pages](https://peyrone.github.io/traceguard-ai/)
