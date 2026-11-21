@@ -20,6 +20,7 @@ var catalog = []entities.Scenario{
 	{ID: "unauthorized_transfer", Label: "Unauthorized transfer"},
 	{ID: "shuffled_transfer", Label: "Shuffled audit events"},
 	{ID: "missing_intermediate", Label: "Missing intermediate evidence"},
+	{ID: "partial_evidence_confirmed", Label: "Partial evidence, confirmed violation"},
 }
 
 type Store struct{}
