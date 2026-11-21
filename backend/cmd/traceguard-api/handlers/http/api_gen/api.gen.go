@@ -22,6 +22,12 @@ const (
 	FAILED    EventOutcome = "FAILED"
 )
 
+// Defines values for ExplainResponseMode.
+const (
+	Ai       ExplainResponseMode = "ai"
+	Fallback ExplainResponseMode = "fallback"
+)
+
 // Defines values for Status.
 const (
 	INCONCLUSIVE        Status = "INCONCLUSIVE"
@@ -82,6 +88,35 @@ type Event struct {
 // EventOutcome defines model for Event.Outcome.
 type EventOutcome string
 
+// ExplainEvidence defines model for ExplainEvidence.
+type ExplainEvidence struct {
+	Action *string `json:"action,omitempty"`
+
+	// EventId Opaque audit event identifier.
+	EventId string  `json:"event_id"`
+	Outcome *string `json:"outcome,omitempty"`
+}
+
+// ExplainRequest defines model for ExplainRequest.
+type ExplainRequest struct {
+	Evidence []ExplainEvidence `json:"evidence"`
+	Finding  Finding           `json:"finding"`
+
+	// RuleSummary Redacted summary of the applicable policy rule.
+	RuleSummary string `json:"rule_summary"`
+}
+
+// ExplainResponse defines model for ExplainResponse.
+type ExplainResponse struct {
+	EvidenceEventIds []string            `json:"evidence_event_ids"`
+	Explanation      string              `json:"explanation"`
+	Mode             ExplainResponseMode `json:"mode"`
+	NextSteps        []string            `json:"next_steps"`
+}
+
+// ExplainResponseMode defines model for ExplainResponse.Mode.
+type ExplainResponseMode string
+
 // Finding defines model for Finding.
 type Finding struct {
 	EvidenceEventIds []string `json:"evidence_event_ids"`
@@ -136,11 +171,17 @@ type Summary struct {
 // AnalyzeJSONRequestBody defines body for Analyze for application/json ContentType.
 type AnalyzeJSONRequestBody = AnalyzeRequest
 
+// ExplainJSONRequestBody defines body for Explain for application/json ContentType.
+type ExplainJSONRequestBody = ExplainRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
 	// (POST /api/v1/analyze)
 	Analyze(ctx echo.Context) error
+
+	// (POST /api/v1/explain)
+	Explain(ctx echo.Context) error
 
 	// (GET /api/v1/scenarios)
 	ListScenarios(ctx echo.Context) error
@@ -160,6 +201,15 @@ func (w *ServerInterfaceWrapper) Analyze(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.Analyze(ctx)
+	return err
+}
+
+// Explain converts echo context to params.
+func (w *ServerInterfaceWrapper) Explain(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Explain(ctx)
 	return err
 }
 
@@ -210,6 +260,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.POST(baseURL+"/api/v1/analyze", wrapper.Analyze)
+	router.POST(baseURL+"/api/v1/explain", wrapper.Explain)
 	router.GET(baseURL+"/api/v1/scenarios", wrapper.ListScenarios)
 	router.GET(baseURL+"/healthz", wrapper.Healthz)
 

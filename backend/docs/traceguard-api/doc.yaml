@@ -59,6 +59,29 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AnalyzeRequest'
+  /api/v1/explain:
+    post:
+      operationId: Explain
+      description: Explain a selected finding using redacted audit evidence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExplainRequest'
+      responses:
+        '200':
+          description: Explanation and validated evidence references
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExplainResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     Health:
@@ -240,3 +263,44 @@ components:
       - summary
       - graph
       - findings
+    ExplainRequest:
+      type: object
+      required: [finding, rule_summary, evidence]
+      properties:
+        finding:
+          $ref: '#/components/schemas/Finding'
+        rule_summary:
+          type: string
+          description: Redacted summary of the applicable policy rule.
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExplainEvidence'
+    ExplainEvidence:
+      type: object
+      required: [event_id]
+      properties:
+        event_id:
+          type: string
+          description: Opaque audit event identifier.
+        action:
+          type: string
+        outcome:
+          type: string
+    ExplainResponse:
+      type: object
+      required: [explanation, next_steps, evidence_event_ids, mode]
+      properties:
+        explanation:
+          type: string
+        next_steps:
+          type: array
+          items:
+            type: string
+        evidence_event_ids:
+          type: array
+          items:
+            type: string
+        mode:
+          type: string
+          enum: [ai, fallback]

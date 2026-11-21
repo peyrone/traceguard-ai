@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/investigation"
 )
 
 func TestRoutes(t *testing.T) {
 	router := echo.New()
-	Register(router, nil, nil, nil)
+	Register(router, nil, nil, nil, investigation.New(nil))
 	for _, test := range []struct {
 		method, path, input, contains string
 		status                        int

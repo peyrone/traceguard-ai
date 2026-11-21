@@ -10,16 +10,18 @@ import (
 	api "github.com/peyrone/traceguard-ai/backend/cmd/traceguard-api/handlers/http/api_gen"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/entities"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/ports"
+	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/investigation"
 )
 
 type server struct {
-	fixtures ports.Fixtures
-	lineage  ports.Lineage
-	detector ports.Detector
+	fixtures      ports.Fixtures
+	lineage       ports.Lineage
+	detector      ports.Detector
+	investigation investigation.Service
 }
 
-func Register(router *echo.Echo, fixtures ports.Fixtures, lineage ports.Lineage, detector ports.Detector) {
-	api.RegisterHandlers(router, &server{fixtures: fixtures, lineage: lineage, detector: detector})
+func Register(router *echo.Echo, fixtures ports.Fixtures, lineage ports.Lineage, detector ports.Detector, explanations investigation.Service) {
+	api.RegisterHandlers(router, &server{fixtures: fixtures, lineage: lineage, detector: detector, investigation: explanations})
 }
 
 func (s *server) Healthz(c echo.Context) error {
@@ -39,9 +41,7 @@ func (s *server) ListScenarios(c echo.Context) error {
 func (s *server) Analyze(c echo.Context) error {
 	ctx := c.Request().Context()
 	var request api.AnalyzeRequest
-	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, 2<<20)
-	dec := json.NewDecoder(c.Request().Body)
-	if err := dec.Decode(&request); err != nil || dec.Decode(new(any)) != io.EOF {
+	if !decodeRequest(c, &request) {
 		return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Expected one JSON request object.")
 	}
 	var events []entities.Event
@@ -141,4 +141,10 @@ func validOutcome(outcome string) bool {
 
 func fail(c echo.Context, status int, code, message string) error {
 	return c.JSON(status, api.Error{Code: code, Message: message})
+}
+
+func decodeRequest(c echo.Context, destination any) bool {
+	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, 2<<20)
+	decoder := json.NewDecoder(c.Request().Body)
+	return decoder.Decode(destination) == nil && decoder.Decode(new(any)) == io.EOF
 }

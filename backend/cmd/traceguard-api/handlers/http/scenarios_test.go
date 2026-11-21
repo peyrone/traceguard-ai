@@ -1,7 +1,6 @@
 package tracehttp
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,13 +12,14 @@ import (
 	api "github.com/peyrone/traceguard-ai/backend/cmd/traceguard-api/handlers/http/api_gen"
 	"github.com/peyrone/traceguard-ai/backend/internal/adapters/fixtures"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/entities"
+	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/detection"
+	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/investigation"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/lineage"
 )
 
 func TestScenarioPipeline(t *testing.T) {
 	router := echo.New()
-	detector := &recordingDetector{}
-	Register(router, fixtures.Store{}, lineage.Service{}, detector)
+	Register(router, fixtures.Store{}, lineage.Service{}, detection.Evaluator{}, investigation.New(nil))
 
 	list := httptest.NewRecorder()
 	router.ServeHTTP(list, httptest.NewRequest(http.MethodGet, "/api/v1/scenarios", nil))
@@ -40,38 +40,29 @@ func TestScenarioPipeline(t *testing.T) {
 		}
 		return response
 	}
+	if allowed := analyze("allowed_transfer"); allowed.Summary.Status != api.Status(entities.NoViolationObserved) {
+		t.Fatalf("unexpected allowed result: %+v", allowed)
+	}
 	direct := analyze("unauthorized_transfer")
-	if direct.Summary.Status != api.Status(entities.VerifiedViolation) || direct.Summary.EventsProcessed != 3 || detector.policy.PolicyID != "policy-001" {
+	if direct.Summary.Status != api.Status(entities.VerifiedViolation) || direct.Summary.EventsProcessed != 3 {
 		t.Fatalf("unexpected direct transfer result: %+v", direct)
 	}
 	if shuffled := analyze("shuffled_transfer"); !reflect.DeepEqual(shuffled, direct) {
 		t.Fatalf("shuffled response differs: %+v", shuffled)
 	}
 	missing := analyze("missing_intermediate")
-	if missing.Summary.Status != api.Status(entities.Inconclusive) || len(missing.Graph.Edges) != 2 {
+	if missing.Summary.Status != api.Status(entities.PotentialViolation) || len(missing.Graph.Edges) != 2 {
 		t.Fatalf("unexpected missing result: %+v", missing)
 	}
+	found := false
 	for _, edge := range missing.Graph.Edges {
+		found = found || edge.Target == "external-crm"
 		if edge.Target == "external-crm" && (edge.EvidenceStatus != api.EdgeEvidenceStatus(entities.Inferred) ||
 			!reflect.DeepEqual(edge.EvidenceEventIds, []string{"evt-001", "evt-004"})) {
 			t.Fatalf("unexpected missing edge: %+v", edge)
 		}
 	}
-}
-
-type recordingDetector struct {
-	policy entities.Policy
-}
-
-func (d *recordingDetector) Detect(_ context.Context, events []entities.Event, _ entities.Graph, policy entities.Policy) ([]entities.Finding, error) {
-	d.policy = policy
-	for _, event := range events {
-		if event.EventID == "evt-003" {
-			return []entities.Finding{{
-				ID: "finding-1", RuleID: "DENY_EXTERNAL_PII", Status: entities.VerifiedViolation,
-				Message: "Completed transfer to an unapproved destination", EvidenceEventIDs: []string{event.EventID},
-			}}, nil
-		}
+	if !found || len(missing.Findings) != 1 || missing.Findings[0].Status != api.Status(entities.PotentialViolation) || len(missing.Findings[0].MissingEvidence) == 0 {
+		t.Fatalf("missing inferred evidence or finding: %+v", missing)
 	}
-	return nil, nil
 }
