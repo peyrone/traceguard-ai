@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --test src/features/lineage/*.test.ts"
+    "test": "node --test src/features/lineage/*.test.ts src/lib/api/*.test.ts"
   },
   "dependencies": {
     "@xyflow/react": "13.0.2",
