@@ -28,7 +28,7 @@ func TestPrivacyDecisionHTTP(t *testing.T) {
 	}{
 		{"allowed", valid, "TRANSFER_POLICY", api.ALLOW},
 		{"denied destination", strings.Replace(valid, "sales-api", "external-crm", 1), "DENY_EXTERNAL_PII", api.DENY},
-		{"legacy request excludes scenario-only destination", strings.Replace(valid, "sales-api", "case-router", 1), "DENY_EXTERNAL_PII", api.DENY},
+		{"legacy request excludes scenario-only destination", strings.Replace(valid, "sales-api", "internal-gateway", 1), "DENY_EXTERNAL_PII", api.DENY},
 		{"denied purpose", strings.Replace(valid, "CUSTOMER_SERVICE", "MARKETING", 1), "DENY_PURPOSE", api.DENY},
 		{"unknown policy", strings.Replace(valid, "policy-001", "unknown", 1), "TRANSFER_POLICY", api.INDETERMINATE},
 		{"missing attributes", "{}", "TRANSFER_POLICY", api.INDETERMINATE},
@@ -74,10 +74,10 @@ func TestScenarioPrivacyDecisionHTTP(t *testing.T) {
 	}{
 		{"allowed_transfer", "evt-a-001", "customer-api", "sales-api", "PII", "CUSTOMER_SERVICE", api.ALLOW},
 		{"allowed_transfer", "evt-a-005", "customer-api", "consent-api", "PII", "CUSTOMER_SERVICE", api.ALLOW},
-		{"allowed_transfer", "evt-a-006", "sales-api", "case-router", "PII", "CUSTOMER_SERVICE", api.ALLOW},
-		{"allowed_transfer", "evt-a-007", "case-router", "case-store", "PII", "CUSTOMER_SERVICE", api.ALLOW},
+		{"allowed_transfer", "evt-a-006", "sales-api", "internal-gateway", "PII", "CUSTOMER_SERVICE", api.ALLOW},
+		{"allowed_transfer", "evt-a-007", "internal-gateway", "internal-crm", "PII", "CUSTOMER_SERVICE", api.ALLOW},
 		{"unauthorized_transfer", "evt-003", "sales-api", "external-crm", "PII", "MARKETING", api.DENY},
-		{"unauthorized_transfer", "evt-006", "sales-api", "case-router", "PII", "CUSTOMER_SERVICE", api.ALLOW},
+		{"unauthorized_transfer", "evt-006", "sales-api", "internal-gateway", "PII", "CUSTOMER_SERVICE", api.ALLOW},
 		{"shuffled_transfer", "evt-s-003", "sales-api", "external-crm", "PII", "MARKETING", api.DENY},
 		{"missing_intermediate", "evt-004", "sales-api", "external-crm", "", "", api.INDETERMINATE},
 		{"partial_evidence_confirmed", "evt-e-001", "customer-api", "sales-api", "", "", api.INDETERMINATE},
@@ -178,11 +178,11 @@ func TestScenarioPolicyIsolation(t *testing.T) {
 				}
 				candidates := *analysis.TransferCandidates
 				index := slices.IndexFunc(candidates, func(c api.TransferCandidate) bool {
-					return c.SourceService == "sales-api" && c.DestinationService == "case-router" &&
+					return c.SourceService == "sales-api" && c.DestinationService == "internal-gateway" &&
 						optional(c.Classification) == "PII" && optional(c.Purpose) == "CUSTOMER_SERVICE"
 				})
 				if index < 0 {
-					t.Fatalf("%s returned no case-router candidate with matching attributes", scenario)
+					t.Fatalf("%s returned no internal-gateway candidate with matching attributes", scenario)
 				}
 				want := api.ALLOW
 				if scenario == "allowed_transfer" {
@@ -191,7 +191,7 @@ func TestScenarioPolicyIsolation(t *testing.T) {
 				check(map[string]any{"scenario_id": scenario, "candidate_id": candidates[index].Id}, want)
 			}
 			check(map[string]any{
-				"source_service": "sales-api", "destination_service": "case-router",
+				"source_service": "sales-api", "destination_service": "internal-gateway",
 				"data_categories": []string{"PII"}, "purpose": "CUSTOMER_SERVICE", "policy_id": "policy-001",
 			}, api.DENY)
 		})

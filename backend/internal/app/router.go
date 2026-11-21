@@ -26,12 +26,12 @@ func Router(settings config.Config) *echo.Echo {
 		AllowHeaders: []string{echo.HeaderContentType},
 	}))
 	graph := lineage.Service{NodeKinds: map[string]string{
-		"customer-api": "internal",
-		"sales-api":    "internal",
-		"consent-api":  "internal",
-		"case-router":  "internal",
-		"case-store":   "internal",
-		"external-crm": "external",
+		"customer-api":     "internal",
+		"sales-api":        "internal",
+		"consent-api":      "internal",
+		"internal-gateway": "internal",
+		"internal-crm":     "internal",
+		"external-crm":     "external",
 	}}
 	var provider investigation.Provider
 	apiKey := strings.TrimSpace(os.Getenv("OPENAI_API_KEY"))
