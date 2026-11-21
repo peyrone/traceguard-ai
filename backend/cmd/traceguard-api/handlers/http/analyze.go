@@ -130,7 +130,7 @@ func (s *server) analyze(ctx context.Context, events []entities.Event, policy en
 
 func response(count int, graph entities.Graph, findings []entities.Finding) api.AnalyzeResponse {
 	result := api.AnalyzeResponse{
-		Summary:  api.Summary{Status: api.Status(entities.Inconclusive), EventsProcessed: count},
+		Summary:  api.Summary{Status: api.Status(caseStatus(count, findings)), EventsProcessed: count},
 		Graph:    api.Graph{Nodes: []api.Node{}, Edges: []api.Edge{}},
 		Findings: []api.Finding{},
 	}
@@ -143,19 +143,26 @@ func response(count int, graph entities.Graph, findings []entities.Finding) api.
 			EvidenceEventIds: append([]string{}, edge.EvidenceEventIDs...),
 		})
 	}
-	rank := map[entities.Status]int{entities.VerifiedViolation: 4, entities.PotentialViolation: 3, entities.Inconclusive: 2, entities.NoViolationObserved: 1}
-	highest := 0
 	for _, f := range findings {
-		if severity := rank[f.Status]; count > 0 && severity > highest {
-			highest = severity
-			result.Summary.Status = api.Status(f.Status)
-		}
 		result.Findings = append(result.Findings, api.Finding{
 			Id: f.ID, RuleId: f.RuleID, Status: api.Status(f.Status), Message: f.Message,
 			EvidenceEventIds: append([]string{}, f.EvidenceEventIDs...), MissingEvidence: append([]string{}, f.MissingEvidence...),
 		})
 	}
 	return result
+}
+
+func caseStatus(count int, findings []entities.Finding) entities.Status {
+	status := entities.Inconclusive
+	rank := map[entities.Status]int{entities.VerifiedViolation: 4, entities.PotentialViolation: 3, entities.Inconclusive: 2, entities.NoViolationObserved: 1}
+	highest := 0
+	for _, f := range findings {
+		if severity := rank[f.Status]; count > 0 && severity > highest {
+			highest = severity
+			status = f.Status
+		}
+	}
+	return status
 }
 
 func blankEndpoint(value *string) bool {

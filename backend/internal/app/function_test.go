@@ -22,6 +22,7 @@ func TestVercelFunctions(t *testing.T) {
 		{"health", http.MethodGet, "", `"status":"ok"`, health.Healthz},
 		{"scenarios", http.MethodGet, "", `"id":"missing_intermediate"`, api.Scenarios},
 		{"analyze", http.MethodPost, `{"scenario_id":"unauthorized_transfer"}`, `"status":"VERIFIED_VIOLATION"`, api.Analyze},
+		{"report summary", http.MethodPost, `{"scenario_id":"allowed_transfer","audience":"executive","language":"th"}`, `"status":"NO_VIOLATION_OBSERVED"`, api.ReportSummary},
 		{"explain", http.MethodPost, `{
 			"finding":{"id":"f","rule_id":"DENY_EXTERNAL_PII","status":"VERIFIED_VIOLATION","message":"Destination denied.",
 			"evidence_event_ids":["evt-003"],"missing_evidence":[]},

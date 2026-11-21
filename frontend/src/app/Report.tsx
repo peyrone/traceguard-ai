@@ -1,5 +1,6 @@
 import { useLanguage } from '../lib/language';
 import { useEffect, useState } from 'react';
+import { AudienceReport } from './AudienceReport';
 import { Icon } from '../components/Icon';
 import { statusLabels } from '../features/investigation/FindingStatus';
 import type { Analysis, Explanation, api } from '../lib/api/client';
@@ -42,6 +43,7 @@ export default function Report({ analysis, caseId, label, client }: Props) {
       <button className="overview-action print-action" disabled={loading} onClick={() => window.print()}><Icon name="download" size={16} />{t("Print / Save PDF")}</button>
     </header>
     <p className="report-scope">{t("Synthetic audit data ·")} {analysis.summary.events_processed} {t("events processed ·")} {analysis.findings.length} {t("findings")}</p>
+    <AudienceReport key={caseId} caseId={caseId} label={label} analysis={analysis} client={client} />
     <section className="report-block"><h3>{t("Findings and explanations")}</h3>
       {loading && <p role="status">{t("Preparing explanations…")}</p>}
       {analysis.findings.length === 0 && <p>{t(analysis.summary.status === 'NO_VIOLATION_OBSERVED'

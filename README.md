@@ -34,7 +34,7 @@ Use Go 1.25 and Node.js 24.15 or later in the 24.x release line. Run each comman
 1. In the **Review queue**, expand **Audit details** to inspect a cited synthetic record. Select **Open case** to view the findings, service lineage graph, and evidence references.
 2. Open the **Partial evidence, confirmed violation** case. The outbound send is `OBSERVED` and cites `evt-e-002`. The upstream link is `INFERRED` and cites the receipt `evt-e-001`. Select **Explain finding** for a cited summary and next steps.
 3. In **Simulated transfer enforcement**, select a transfer and click **Test transfer**. The unauthorized outbound send returns `DENY`. The inferred upstream link returns `INDETERMINATE`. To try `ALLOW`, open **Allowed transfer** from the dashboard chart or enable **Include cases without violations** in the queue. Only `ALLOW` can execute the in-memory simulation. No data leaves the app during a transfer simulation.
-4. Select **View report** for the findings, explanations, and transfer evidence. Use **Print / Save PDF** to export through the browser.
+4. Select **View report** to inspect the findings and transfer evidence. Choose **Executive brief** or **Engineering report**, pick English or Thai, and select **Generate summary**. **Print / Save PDF** exports the displayed edition. **View full case report** returns to the detailed findings.
 
 The interface supports English and Thai. The dashboard shows case status and counts of observed and inferred links. **Auto refresh** starts off. Turn it on to refresh every minute while the tab is visible, or select **Refresh cases** to update manually.
 
@@ -57,6 +57,7 @@ The Go backend uses Echo and generated OpenAPI bindings. The React and TypeScrip
 | `GET /healthz` | API health. |
 | `GET /api/v1/scenarios` | The five built-in scenario IDs and labels. |
 | `POST /api/v1/analyze` | Evidence-linked graph and findings for a fixture or explicit events and policy. Analysis with a fixture's own policy also returns scenario-scoped transfer candidates. |
+| `POST /api/v1/report-summary` | Audience-specific report with a canonical verdict, cited evidence, and prioritized follow-up actions in English or Thai. |
 | `POST /api/v1/explain` | Cited explanation and next steps for a selected finding. Matched fixture findings can include investigation insights and GDPR considerations for review. |
 | `POST /api/v1/privacy/decisions` | Demo policy decision and whether the synthetic transfer executed. The workspace sends the scenario ID and the candidate ID returned by analysis. |
 
