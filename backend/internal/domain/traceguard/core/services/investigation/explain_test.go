@@ -63,7 +63,7 @@ func TestExplainWithoutEvidenceUsesFallback(t *testing.T) {
 	service := New(providerFunc(func(context.Context, Request) (Suggestion, error) {
 		called = true
 		// A suggestion that would otherwise pass every check: same status, matching (empty) refs, vetted step.
-		return Suggestion{entities.Inconclusive, []string{}, []string{"collect_records"}}, nil
+		return Suggestion{Status: entities.Inconclusive, EvidenceRefs: []string{}, StepIDs: []string{"collect_records"}}, nil
 	}))
 
 	got, err := service.Explain(t.Context(), finding, nil)
