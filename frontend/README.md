@@ -38,6 +38,10 @@ npm run build
 npx wrangler@4.166.0 pages deploy dist
 ```
 
+<<<<<<< HEAD
+The browser bundle currently uses synthetic data. The Go API is a separate service.
+=======
 Set `VITE_API_BASE_URL` in the Pages build environment to use the deployed Go API.
+>>>>>>> main
 
 See the [Cloudflare Pages configuration reference](https://developers.cloudflare.com/pages/functions/wrangler-configuration/).

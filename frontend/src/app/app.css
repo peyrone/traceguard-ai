@@ -19,7 +19,9 @@ main {
   margin-bottom: 28px;
 }
 
-h1, h2, p {
+h1,
+h2,
+p {
   margin: 0;
 }
 
@@ -116,7 +118,7 @@ main button[aria-pressed="true"] {
   gap: 12px;
 }
 
-.finding-detail section p + p {
+.finding-detail section p+p {
   margin-top: 8px;
 }
 

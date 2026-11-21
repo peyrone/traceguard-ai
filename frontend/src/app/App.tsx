@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { InvestigationPanel, statusLabels } from '../features/investigation/InvestigationPanel';
-import { api, hasConfiguredBackend, type Analysis, type Explanation, type Scenario } from '../lib/api/client';
 import { LineageGraph } from '../features/lineage/LineageGraph';
 import type { Graph } from '../features/lineage/flow-elements';
+import { api, hasConfiguredBackend, type Analysis, type Explanation, type Scenario } from '../lib/api/client';
 
 const demoGraph: Graph = {
   nodes: [
