@@ -2,7 +2,7 @@
 
 | Scenario | Evidence sketch | Expected result | Primary test |
 |---|---|---|---|
-| S01 Allowed (5 nodes) | `customer-api → sales-api` carries approved synthetic PII. Operational records also show `customer-api → consent-api` and `sales-api → case-router → case-store`. | `NO_VIOLATION_OBSERVED` | All four edges are observed. Only `evt-001` is in scope for the PII policy. |
+| S01 Allowed (5 nodes) | `customer-api → sales-api` carries approved synthetic PII. Operational records also show `customer-api → consent-api` and `sales-api → case-router → case-store`. | `NO_VIOLATION_OBSERVED` | All four edges are observed and in scope for the fixture policy. Each transfer simulation returns `ALLOW`. |
 | S02 External leak (6 nodes) | Alongside approved PII transfers to the consent and case services, `sales-api → external-crm` carries synthetic PII for marketing. | `VERIFIED_VIOLATION` | The outbound edge and the finding cite the completed send `evt-003`. |
 | S03 Shuffled (6 nodes) | All six S02 audit records appear in a different input order. | Same result as S02 | The investigation summary, graph, and findings are identical despite the permutation. Transfer candidate IDs are scoped to each scenario. |
 | S04 Missing intermediate (5 nodes) | `external-crm` reports receipt in `evt-004` with no sender. `evt-001` supplies the prior hop to `sales-api`. The observed `sales-api → case-router → case-store` branch shares the trace ID and carries a separate data reference. | `POTENTIAL_VIOLATION` | The inferred outbound edge cites `evt-001` and `evt-004`. The finding cites the receipt and asks for a matching completed send. |

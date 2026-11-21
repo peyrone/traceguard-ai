@@ -37,6 +37,12 @@ func TestScenarioCandidates(t *testing.T) {
 				}
 				ids[candidate.ID] = true
 				request := candidate.Request
+				if tc.scenario == "allowed_transfer" {
+					result := SimulateCandidate(t.Context(), candidate, policy)
+					if result.Decision != Allow || !result.TransferExecuted || result.Transfer == nil {
+						t.Fatalf("allowed scenario blocked %v: %+v", candidate.EvidenceEventIDs, result)
+					}
+				}
 				if request.PolicyID != policy.PolicyID || !slices.ContainsFunc(graph.Edges, func(edge entities.Edge) bool {
 					return edge.ID == candidate.EdgeID && edge.Source == request.SourceService &&
 						edge.Target == request.DestinationService && edge.EvidenceStatus == candidate.EvidenceStatus

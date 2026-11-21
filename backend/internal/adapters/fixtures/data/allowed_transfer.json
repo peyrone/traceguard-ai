@@ -27,7 +27,7 @@
       "source_service": "customer-api",
       "destination_service": "consent-api",
       "data_ref": "synthetic-ops-001",
-      "classification": "INTERNAL",
+      "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
     },
     {
@@ -42,7 +42,7 @@
       "source_service": "sales-api",
       "destination_service": "case-router",
       "data_ref": "synthetic-ops-001",
-      "classification": "INTERNAL",
+      "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
     },
     {
@@ -57,7 +57,7 @@
       "source_service": "case-router",
       "destination_service": "case-store",
       "data_ref": "synthetic-ops-001",
-      "classification": "INTERNAL",
+      "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
     }
   ],
@@ -66,7 +66,10 @@
     "classification": "PII",
     "allowed_destinations": [
       "sales-api",
-      "customer-api"
+      "customer-api",
+      "consent-api",
+      "case-router",
+      "case-store"
     ],
     "allowed_purposes": [
       "CUSTOMER_SERVICE"
