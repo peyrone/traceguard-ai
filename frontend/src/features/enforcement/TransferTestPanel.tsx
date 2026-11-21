@@ -58,19 +58,20 @@ export function TransferTestPanel({ scenarioID, analysis, loading, decide }: Pro
           {selected && <p className="transfer-policy">Policy <code>{selected.policy_id}</code></p>}
         </div>
         <div className="transfer-controls">
-          <label htmlFor="privacy-transfer-case">Scenario transfer</label>
-          <select id="privacy-transfer-case" value={selected?.id ?? ""} disabled={loading || pending || candidates.length === 0} onChange={(event) => {
-            setSelectedID(event.target.value);
-            setResult(undefined);
-            setError("");
-          }}>
-            <option value="">Select a transfer</option>
-            {candidates.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.source_service} → {candidate.destination_service} · {candidate.evidence_status} · {candidate.evidence_event_ids.join(", ")}
-              </option>
+          <h3 id="transfer-selection">Scenario transfer</h3>
+          {candidates.length > 0 && <div className="evidence-choices" role="group" aria-labelledby="transfer-selection">
+            {candidates.map(candidate => (
+              <button key={candidate.id} type="button" aria-pressed={selectedID === candidate.id} disabled={loading || pending}
+                onClick={() => {
+                  setSelectedID(selectedID === candidate.id ? "" : candidate.id);
+                  setResult(undefined);
+                  setError("");
+                }}>
+                {candidate.source_service} → {candidate.destination_service}
+                <small>{candidate.evidence_status} · {candidate.evidence_event_ids.join(", ")}</small>
+              </button>
             ))}
-          </select>
+          </div>}
           {!loading && candidates.length === 0 && <p>No transfer evidence is available to simulate.</p>}
         </div>
       </header>
