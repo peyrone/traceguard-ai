@@ -28,6 +28,19 @@ const (
 	Fallback ExplainResponseMode = "fallback"
 )
 
+// Defines values for GDPRMappingAssessment.
+const (
+	InsufficientInformation GDPRMappingAssessment = "insufficient_information"
+	PotentialConcern        GDPRMappingAssessment = "potential_concern"
+)
+
+// Defines values for InvestigationInsightKind.
+const (
+	Observation   InvestigationInsightKind = "observation"
+	PolicyConcern InvestigationInsightKind = "policy_concern"
+	Uncertainty   InvestigationInsightKind = "uncertainty"
+)
+
 // Defines values for PrivacyDecisionResponseDecision.
 const (
 	ALLOW         PrivacyDecisionResponseDecision = "ALLOW"
@@ -124,10 +137,12 @@ type ExplainRequest struct {
 
 // ExplainResponse defines model for ExplainResponse.
 type ExplainResponse struct {
-	EvidenceEventIds []string            `json:"evidence_event_ids"`
-	Explanation      string              `json:"explanation"`
-	Mode             ExplainResponseMode `json:"mode"`
-	NextSteps        []string            `json:"next_steps"`
+	EvidenceEventIds []string                `json:"evidence_event_ids"`
+	Explanation      string                  `json:"explanation"`
+	GdprMappings     *[]GDPRMapping          `json:"gdpr_mappings,omitempty"`
+	Insights         *[]InvestigationInsight `json:"insights,omitempty"`
+	Mode             ExplainResponseMode     `json:"mode"`
+	NextSteps        []string                `json:"next_steps"`
 }
 
 // ExplainResponseMode defines model for ExplainResponse.Mode.
@@ -143,6 +158,28 @@ type Finding struct {
 	Status           Status   `json:"status"`
 }
 
+// GDPRMapping defines model for GDPRMapping.
+type GDPRMapping struct {
+	Assessment       GDPRMappingAssessment `json:"assessment"`
+	EvidenceEventIds []string              `json:"evidence_event_ids"`
+	MissingFacts     []string              `json:"missing_facts"`
+	Rationale        string                `json:"rationale"`
+	Reference        GDPRReference         `json:"reference"`
+}
+
+// GDPRMappingAssessment defines model for GDPRMapping.Assessment.
+type GDPRMappingAssessment string
+
+// GDPRReference defines model for GDPRReference.
+type GDPRReference struct {
+	// Article Article number with paragraph and point where applicable.
+	Article     string `json:"article"`
+	Criteria    string `json:"criteria"`
+	GuidanceUrl string `json:"guidance_url"`
+	SourceUrl   string `json:"source_url"`
+	Title       string `json:"title"`
+}
+
 // Graph defines model for Graph.
 type Graph struct {
 	Edges []Edge `json:"edges"`
@@ -153,6 +190,16 @@ type Graph struct {
 type Health struct {
 	Status string `json:"status"`
 }
+
+// InvestigationInsight defines model for InvestigationInsight.
+type InvestigationInsight struct {
+	EvidenceEventIds []string                 `json:"evidence_event_ids"`
+	Kind             InvestigationInsightKind `json:"kind"`
+	Text             string                   `json:"text"`
+}
+
+// InvestigationInsightKind defines model for InvestigationInsight.Kind.
+type InvestigationInsightKind string
 
 // Node defines model for Node.
 type Node struct {

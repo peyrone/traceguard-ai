@@ -13,4 +13,6 @@
 
 | 2026-11-21 | Release captain approved additive scenario-scoped transfer candidate contract | Preserve the selected scenario’s graph, evidence, and policy during simulation | Contract reviewed separately. Backend resolves fixture references and existing explicit requests remain supported. |
 
+| 2026-11-21 | Release captain approved optional explanation insights and GDPR mappings | Give investigations an evidence-cited legal review without changing policy verdicts | Dedicated contract PR precedes BE1, BE2 and FE2 integration. Existing callers retain the original fields. |
+
 Append to this log when scope/contract changes; include the agreeing owners and consequence.
