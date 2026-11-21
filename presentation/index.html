@@ -18,7 +18,7 @@
         href="https://traceguard-ai-ui.vercel.app/"
         target="_blank"
         rel="noopener noreferrer"
-        >เปิดเดโม ↗</a
+        >เปิดระบบสาธิต ↗</a
       >
     </header>
     <main>
@@ -26,92 +26,95 @@
         <div class="split">
           <div>
             <h1 id="question">
-              ก่อนระบบส่งข้อมูล<br />รอบถัดไป<br /><em>จะแก้ตรงไหน?</em>
+              ก่อนส่งข้อมูล<br />รอบถัดไป<br /><em>ต้องแก้ตรงไหน?</em>
             </h1>
             <p class="lead">
-              คืนนี้ข้อมูลลูกค้าถูกส่งไป CRM ที่นโยบายห้ามไว้
-              พรุ่งนี้งานเดิมจะรันอีกครั้ง บันทึกไหนบอกว่าต้องกลับไปตรวจจุดใด?
+              คืนนี้ระบบส่งข้อมูลลูกค้าออกนอกบริษัท
+              ทั้งที่บริษัทอนุญาตให้ใช้ข้อมูลนี้ภายในเท่านั้น
+              ถ้าพรุ่งนี้ระบบจะส่งอีกครั้ง คุณจะตรวจตรงไหนก่อน?
             </p>
             <a class="btn" href="#evidence">ดูหลักฐาน <span>→</span></a>
           </div>
           <figure class="terminal">
             <figcaption>
-              <span class="dot"></span>Audit log
-              <small>3 เหตุการณ์ที่เลือก</small>
+              <span class="dot"></span>บันทึกเหตุการณ์
+              <small>ตัวอย่าง 3 รายการ</small>
             </figcaption>
             <div class="log">
-              <time>03:10:01Z</time><code>evt-001</code
-              ><strong>customer-api → sales-api</strong><samp>DATA_SENT</samp>
+              <time>03:10:01</time><code>evt-001</code
+              ><strong>ระบบลูกค้า → ระบบฝ่ายขาย</strong><samp>ส่งข้อมูล</samp>
             </div>
             <div class="log">
-              <time>03:10:02Z</time><code>evt-002</code
-              ><strong>sales-api</strong><samp>DATA_PROCESSED</samp>
+              <time>03:10:02</time><code>evt-002</code
+              ><strong>ระบบฝ่ายขาย</strong><samp>ประมวลผลข้อมูล</samp>
             </div>
             <div class="log">
-              <time>03:10:03Z</time><code>evt-003</code
-              ><strong>sales-api → external-crm</strong><samp>DATA_SENT</samp>
+              <time>03:10:03</time><code>evt-003</code
+              ><strong>ระบบฝ่ายขาย → ระบบภายนอก</strong><samp>ส่งข้อมูล</samp>
             </div>
-            <div class="terminal-foot">trace-001 <span>ข้อมูลจำลอง</span></div>
+            <div class="terminal-foot">เวลาสากล <span>ข้อมูลจำลอง</span></div>
           </figure>
         </div>
       </section>
       <section id="evidence" hidden aria-labelledby="evidence-title">
-        <h2 id="evidence-title">หลักฐานชี้ไปที่ <em>Sales API</em></h2>
+        <h2 id="evidence-title">ระบบไหน <em>ส่งข้อมูลออก?</em></h2>
         <p class="lead">
-          กฎของเคสนี้อนุญาตให้ส่งข้อมูลส่วนบุคคลไปยังบริการภายในที่ระบุไว้
+          บริษัทอนุญาตให้ระบบฝ่ายขายรับข้อมูลลูกค้า
+          และส่งต่อให้ระบบภายในที่กำหนดไว้
         </p>
         <div class="route">
-          <div><small>ต้นทาง</small><strong>Customer API</strong></div>
+          <div><small>ต้นทาง</small><strong>ระบบลูกค้า</strong></div>
           <span>→</span>
-          <div><small>ผู้ส่งออก</small><strong>Sales API</strong></div>
+          <div><small>ผู้ส่งออก</small><strong>ระบบฝ่ายขาย</strong></div>
           <span>→</span>
           <div class="flag">
-            <small>นอกนโยบาย</small><strong>External CRM</strong>
+            <small>ปลายทางที่ห้ามส่ง</small
+            ><strong>ระบบดูแลลูกค้าภายนอก</strong>
           </div>
         </div>
         <div class="finding">
           <code>evt-003</code>
           <div>
-            <b>ยืนยันได้ว่ามีการส่งออกสำเร็จ</b>
+            <b>ระบบฝ่ายขายส่งข้อมูลออกสำเร็จ</b>
             <p>
-              ผล COMPLETED และปลายทาง external-crm รองรับข้อค้นพบ
-              DENY_EXTERNAL_PII
+              บันทึกนี้ระบุผู้ส่ง ปลายทาง และผลว่า “ส่งสำเร็จ”
+              ทีมจึงรู้ว่าต้องตรวจการส่งออกจากระบบฝ่ายขาย
             </p>
           </div>
         </div>
-        <a class="btn" href="#demo">ดูเคสในแอป <span>→</span></a>
+        <a class="btn" href="#demo">ดูตัวอย่างในระบบ <span>→</span></a>
       </section>
       <section id="demo" hidden aria-labelledby="demo-title">
         <div class="split">
           <div>
-            <h2 id="demo-title">ลองเปิดเคส<br /><em>บนระบบจริง</em></h2>
+            <h2 id="demo-title">ดูตัวอย่าง<br /><em>ในระบบจริง</em></h2>
             <p class="lead">
-              เลือก Unauthorized transfer แล้วเปิด evt-003 จากนั้นเทียบกับ
-              Missing intermediate evidence และกด Explain finding
-              เพื่อดูสิ่งที่ควรตรวจต่อ
+              เลือกภาษาไทย แล้วเปิด “การโอนข้อมูลที่ไม่ได้รับอนุญาต” ดูรายการ
+              evt-003 จากนั้นเปิด “หลักฐานระหว่างทางไม่ครบ”
+              เพื่อดูว่าเรายังขาดข้อมูลอะไร
             </p>
             <a
               class="btn"
               href="https://traceguard-ai-ui.vercel.app/"
               target="_blank"
               rel="noopener noreferrer"
-              >เปิดเดโม TraceGuard ↗</a
+              >เปิดระบบสาธิต ↗</a
             >
             <p class="hint">เปิดในแท็บใหม่ · กลับแท็บนี้เพื่อดูร่างรายงาน</p>
           </div>
           <div class="preview">
-            <button id="preview" aria-label="ขยายภาพเดโมสำรอง">
+            <button id="preview" aria-label="ขยายภาพจากการซ้อม">
               <img
                 id="thumb"
                 src="./assets/verified.jpg"
-                alt="หน้าสอบสวนเคส Unauthorized transfer จากการซ้อม"
-              /><span>ขยายภาพเดโมสำรอง ↗</span>
+                alt="ภาพจากการซ้อม แสดงเหตุการณ์ที่ยืนยันว่าระบบฝ่ายขายส่งข้อมูลออก"
+              /><span>ขยายภาพจากการซ้อม ↗</span>
             </button>
             <div class="switch" aria-label="เลือกภาพจากการซ้อม">
               <button data-image="verified" aria-pressed="true">
-                ยืนยันการส่ง</button
+                ส่งสำเร็จ</button
               ><button data-image="missing" aria-pressed="false">
-                หลักฐานขาด
+                ข้อมูลยังไม่ครบ
               </button>
             </div>
           </div>
@@ -122,37 +125,50 @@
           <div>
             <h2 id="report-title">เมื่อพบเหตุ<br /><em>ต้องรายงานอะไร?</em></h2>
             <p class="lead">
-              ทีมคุ้มครองข้อมูลประเมินข้อเท็จจริงและความเสี่ยง เมื่อเข้าเกณฑ์
-              ผู้ควบคุมข้อมูลแจ้ง สคส. โดยไม่ชักช้า ภายใน 72
-              ชั่วโมงนับแต่ทราบเหตุเท่าที่ทำได้
+              ตามกฎหมายคุ้มครองข้อมูลส่วนบุคคลของสหภาพยุโรป
+              เมื่อทราบว่ามีเหตุละเมิด
+              ผู้ควบคุมข้อมูลต้องแจ้งหน่วยงานกำกับดูแลที่รับผิดชอบโดยไม่ชักช้า
+              และหากทำได้ ให้แจ้งภายใน 72 ชั่วโมง
+              เว้นแต่เหตุการณ์นั้นไม่น่าจะเสี่ยงต่อสิทธิและเสรีภาพของบุคคล
             </p>
             <p class="hint">
-              หากเสี่ยงสูง ให้แจ้งผู้ได้รับผลกระทบโดยไม่ชักช้าพร้อมแนวทางเยียวยา
+              หากเหตุการณ์น่าจะทำให้เกิดความเสี่ยงสูง
+              โดยทั่วไปต้องแจ้งผู้ได้รับผลกระทบโดยไม่ชักช้าด้วย
               <a
-                href="https://www.dol.go.th/media/813280155698073600/2026/01/Fuo4KHTJ6pAP0iDxNt2eqZd8.pdf"
+                href="https://gdpr-info.eu/art-33-gdpr/"
                 target="_blank"
                 rel="noopener noreferrer"
-                >หลักเกณฑ์การแจ้งเหตุ ↗</a
+                >มาตรา 33 การแจ้งหน่วยงาน ↗</a
+              ><br /><a
+                href="https://gdpr-info.eu/art-34-gdpr/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >มาตรา 34 การแจ้งผู้ได้รับผลกระทบ ↗</a
+              ><br /><a
+                href="https://gdpr-info.eu/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >อ่านกฎหมายฉบับเต็ม ↗</a
               >
             </p>
           </div>
           <article class="paper">
             <small>ตัวอย่างร่างรายงาน · ข้อมูลจำลอง</small>
-            <h3>เหตุส่งข้อมูลออกนอกนโยบาย</h3>
+            <h3>ระบบฝ่ายขายส่งข้อมูลลูกค้าออกนอกบริษัท</h3>
             <dl>
               <dt>หลักฐาน</dt>
-              <dd>evt-003 · Sales API → External CRM</dd>
+              <dd>evt-003 · ระบบฝ่ายขาย → ระบบดูแลลูกค้าภายนอก</dd>
               <dt>ผลกระทบ</dt>
               <dd>
-                บุคคลภายนอกอาจเข้าถึงข้อมูลลูกค้า
-                จำนวนผู้ได้รับผลกระทบอยู่ระหว่างตรวจสอบ
+                ผู้รับภายนอกอาจเห็นข้อมูลลูกค้า
+                ทีมกำลังตรวจว่ามีข้อมูลของใครบ้างและมีกี่รายการ
               </dd>
               <dt>มาตรการที่เสนอ</dt>
-              <dd>ตรวจตัวเชื่อมต่อและระงับการส่งไปยังปลายทางนี้</dd>
+              <dd>พักการส่งไปยังปลายทางนี้ แล้วตรวจว่าทำไมระบบจึงส่งออกได้</dd>
               <dt>ก่อนยื่น</dt>
               <dd>
-                บันทึกเวลาที่ทราบเหตุ มาตรการที่ทำแล้ว
-                และช่องทางติดต่อผู้ประสานงาน
+                เติมเวลาที่ทราบเหตุ สิ่งที่ทำไปแล้ว
+                และชื่อกับช่องทางติดต่อของผู้ประสานงาน
               </dd>
             </dl>
           </article>
@@ -160,30 +176,30 @@
       </section>
       <section id="prevention" hidden aria-labelledby="fix-title">
         <h2 id="fix-title">
-          ก่อนงานรอบพรุ่งนี้<br /><em>ตรวจตัวส่งออกของ Sales API</em>
+          ก่อนส่งรอบพรุ่งนี้<br /><em>ตรวจที่ระบบฝ่ายขาย</em>
         </h2>
         <p class="lead">
-          หากยืนยันว่าการตั้งค่าอนุญาตผิดปลายทาง ให้แก้ที่ตัวเชื่อมต่อ
-          แล้วทดสอบด้วยข้อมูลจำลองทั้งสองทาง
+          ตรวจว่าระบบฝ่ายขายอนุญาตให้ส่งข้อมูลไปที่ไหนบ้าง ถ้าพบว่าตั้งค่าผิด
+          ให้แก้แล้วลองส่งข้อมูลจำลองสองครั้ง
         </p>
         <div class="tests">
           <div>
-            <small>ปลายทางต้องห้าม</small><strong>External CRM</strong
-            ><span>ผลที่คาดหวัง · ปฏิเสธการส่ง</span>
+            <small>ปลายทางต้องห้าม</small><strong>ระบบดูแลลูกค้าภายนอก</strong
+            ><span>ผลที่ควรเห็น · ระบบปฏิเสธการส่ง</span>
           </div>
           <div>
-            <small>ปลายทางที่อนุญาต</small><strong>Internal CRM</strong
-            ><span>ผลที่คาดหวัง · ส่งได้ตามนโยบาย</span>
+            <small>ปลายทางที่อนุญาต</small><strong>ระบบดูแลลูกค้าภายใน</strong
+            ><span>ผลที่ควรเห็น · ระบบส่งได้ตามปกติ</span>
           </div>
         </div>
         <div class="qa">
-          <b>Q&amp;A</b> <a href="#evidence">ดูหลักฐาน</a
+          <b>ถามตอบ</b> <a href="#evidence">ดูหลักฐาน</a
           ><a href="#report">ดูร่างรายงาน</a
           ><a
             href="https://traceguard-ai-ui.vercel.app/"
             target="_blank"
             rel="noopener noreferrer"
-            >เปิดเดโม ↗</a
+            >เปิดระบบสาธิต ↗</a
           >
         </div>
       </section>
@@ -191,7 +207,7 @@
     <footer>
       <nav aria-label="ลำดับการนำเสนอ">
         <a href="#start">คำถาม</a><a href="#evidence">หลักฐาน</a
-        ><a href="#demo">เดโม</a><a href="#report">รายงาน</a
+        ><a href="#demo">สาธิต</a><a href="#report">รายงาน</a
         ><a href="#prevention">ป้องกันเหตุซ้ำ</a>
       </nav>
       <div class="controls">
@@ -200,7 +216,7 @@
         ><button id="forward" aria-label="หน้าถัดไป">→</button>
       </div>
     </footer>
-    <dialog aria-label="ภาพเดโมสำรอง">
+    <dialog aria-label="ภาพจากการซ้อม">
       <div class="dialog-head">
         <strong id="caption"></strong><button id="close">ปิด ×</button>
       </div>

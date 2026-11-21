@@ -5,8 +5,8 @@ const forward = document.querySelector("#forward");
 const dialog = document.querySelector("dialog");
 const thumb = document.querySelector("#thumb");
 const imageLabels = {
-  verified: "ยืนยันการส่ง · Unauthorized transfer",
-  missing: "หลักฐานขาด · Missing intermediate evidence",
+  verified: "ระบบฝ่ายขายส่งข้อมูลออกสำเร็จ",
+  missing: "มีบันทึกว่ารับข้อมูล แต่ยังยืนยันผู้ส่งไม่ได้",
 };
 let current = 0;
 
