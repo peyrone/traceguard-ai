@@ -41,3 +41,6 @@
   margin: 0;
   padding: 24px;
 }
+
+.lineage-canvas .react-flow__node.selected { outline: 3px solid #21675c; outline-offset: 4px; }
+.lineage-canvas .react-flow__edge.selected .react-flow__edge-path { stroke-width: 4; }

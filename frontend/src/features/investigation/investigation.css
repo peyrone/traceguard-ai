@@ -1,0 +1,126 @@
+.tg-scenario label {
+  display: grid;
+  width: fit-content;
+  gap: 6px;
+  font-weight: 650;
+}
+
+.tg-scenario select,
+.tg-investigation-panel button {
+  border: 1px solid #9caeb1;
+  border-radius: 8px;
+  background: #fff;
+  color: #172d32;
+  font: inherit;
+}
+
+.tg-scenario select {
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+}
+
+.tg-scenario :focus-visible,
+.tg-investigation :focus-visible {
+  outline: 2px solid #14636d;
+  outline-offset: 3px;
+}
+
+.tg-investigation {
+  display: grid;
+  gap: 12px;
+}
+
+.tg-investigation-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #c0ced0;
+  border-radius: 12px;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+
+.tg-investigation-panel :is(h2, h3, p, ul) {
+  margin: 0;
+}
+
+.tg-investigation-panel h3 {
+  font-size: 1rem;
+}
+
+.tg-finding-list,
+.tg-event-ids,
+.tg-evidence-edges {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.tg-finding-list button {
+  display: grid;
+  width: 100%;
+  gap: 5px;
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tg-finding-list button[aria-pressed="true"] {
+  border-color: #14636d;
+  background: #eaf4f4;
+}
+
+.tg-finding-list strong[data-status="VERIFIED_VIOLATION"],
+.tg-investigation-panel [role="alert"],
+.tg-scenario [role="alert"] {
+  color: #9c2828;
+}
+
+.tg-finding-list strong[data-status="POTENTIAL_VIOLATION"] {
+  color: #8b4a09;
+}
+
+.tg-event-ids {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tg-event-ids li {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #eaf0f1;
+}
+
+.tg-evidence-edges li {
+  display: grid;
+  gap: 2px;
+}
+
+.tg-detail-list {
+  padding-left: 20px;
+}
+
+.tg-explain-button {
+  justify-self: start;
+  min-height: 44px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.tg-explain-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.tg-explanation-result {
+  display: grid;
+  gap: 10px;
+}
+
+.tg-explanation-mode {
+  color: #496167;
+  font-weight: 650;
+  font-size: 0.875rem;
+}

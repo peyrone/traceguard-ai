@@ -34,10 +34,12 @@ func (s *server) Explain(c echo.Context) error {
 		}
 		evidence = append(evidence, investigation.Evidence{EventID: event.EventId, Action: optional(event.Action), Outcome: optional(event.Outcome)})
 	}
-	result := s.investigation.Explain(c.Request().Context(), entities.Finding{
-		ID: finding.Id, RuleID: finding.RuleId, Status: status, Message: finding.Message,
-		EvidenceEventIDs: finding.EvidenceEventIds, MissingEvidence: finding.MissingEvidence,
-	}, request.RuleSummary, evidence)
+	result, err := s.investigation.Explain(c.Request().Context(), entities.Finding{
+		Status: status, EvidenceEventIDs: finding.EvidenceEventIds,
+	}, evidence)
+	if err != nil {
+		return fail(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+	}
 	return c.JSON(http.StatusOK, api.ExplainResponse{
 		Explanation: result.Explanation, NextSteps: result.NextSteps, EvidenceEventIds: result.EvidenceEventIDs,
 		Mode: api.ExplainResponseMode(result.Mode),

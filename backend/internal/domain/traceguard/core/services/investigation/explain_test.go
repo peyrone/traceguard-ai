@@ -37,12 +37,19 @@ func TestExplain(t *testing.T) {
 				}
 				return tc.suggestion, tc.err
 			}))
-			got := service.Explain(t.Context(), finding, "rule summary", evidence)
+			got, err := service.Explain(t.Context(), finding, evidence)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if got.Mode != tc.mode || got.Status != finding.Status || !strings.Contains(got.Explanation, "Potential violation") ||
 				!reflect.DeepEqual(got.EvidenceEventIDs, []string{"evt-4"}) {
 				t.Fatalf("explanation = %+v", got)
 			}
-			if tc.mode == "fallback" && !reflect.DeepEqual(got, New(nil).Explain(t.Context(), finding, "rule summary", evidence)) {
+			fallback, err := New(nil).Explain(t.Context(), finding, evidence)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.mode == "fallback" && !reflect.DeepEqual(got, fallback) {
 				t.Fatal("fallback output changed with provider error")
 			}
 		})
