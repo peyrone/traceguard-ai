@@ -35,6 +35,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
 function InvestigationApp({ client }: { client: typeof api }) {
   const { t } = useLanguage();
   const [showAll, setShowAll] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [route, setRoute] = useState(readRoute);
   useEffect(() => {
     function navigate() { setRoute(readRoute()); }
@@ -82,6 +83,7 @@ function InvestigationApp({ client }: { client: typeof api }) {
     <WorkspaceHeader />
     <Suspense fallback={<main><p role="status">{t("Loading dashboard…")}</p></main>}>
       <Dashboard showAll={showAll} onShowAll={setShowAll} scenarios={scenarios} client={client} listing={listing} listError={listError} onRefresh={refreshCatalog}
+        autoRefresh={autoRefresh} onAutoRefreshChange={setAutoRefresh}
         unavailableCase={route.section !== 'dashboard' && !listError ? route.caseId : undefined} />
     </Suspense>
   </>;

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { collectReferences } from '../features/investigation/EvidenceReferences';
@@ -233,6 +233,40 @@ test('dashboard refresh keeps the last catalog on failure and removes missing ca
   await user.click(screen.getByRole('button', { name: 'Refresh cases' }));
   await screen.findByText('No cases in the catalog.');
   expect(screen.queryByRole('link', { name: 'Open case Scenario two' })).toBeNull();
+});
+
+test('dashboard auto refresh starts off and can be enabled and paused independently of manual refresh', async () => {
+  window.history.replaceState(null, '', '#dashboard');
+  const fetch = mockAPI();
+  const catalogRequests = () => fetch.mock.calls.filter(([url]) => String(url).endsWith('/scenarios')).length;
+
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+  try {
+    render(<App client={createApiClient()} />);
+    await screen.findByRole('link', { name: 'Open case Scenario one' });
+    const autoRefresh = screen.getByRole('switch', { name: 'Auto refresh', checked: false });
+
+    expect(screen.queryByText(/Refreshes every minute/)).toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(120_000));
+    expect(catalogRequests()).toBe(1);
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Refresh cases' })); });
+    expect(catalogRequests()).toBe(2);
+
+    fireEvent.click(autoRefresh);
+    expect(screen.getByRole('switch', { name: 'Auto refresh', checked: true })).toBe(autoRefresh);
+    expect(screen.getByText(/Refreshes every minute/)).toBeTruthy();
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+    expect(catalogRequests()).toBe(3);
+
+    fireEvent.click(autoRefresh);
+    expect(screen.getByRole('switch', { name: 'Auto refresh', checked: false })).toBe(autoRefresh);
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+    expect(catalogRequests()).toBe(3);
+  } finally {
+    cleanup();
+    vi.useRealTimers();
+  }
 });
 
 test('the explanation separates an observed export from inferred upstream evidence', async () => {
