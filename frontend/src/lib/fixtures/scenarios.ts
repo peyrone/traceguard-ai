@@ -8,6 +8,9 @@ interface ScenarioFixture {
 
 const customer: GraphNode = { id: "customer-api", label: "Customer API", kind: "internal" };
 const sales: GraphNode = { id: "sales-api", label: "Sales API", kind: "internal" };
+const consent: GraphNode = { id: "consent-api", label: "Consent API", kind: "internal" };
+const caseRouter: GraphNode = { id: "case-router", label: "Case Router", kind: "internal" };
+const caseStore: GraphNode = { id: "case-store", label: "Case Store", kind: "internal" };
 const external: GraphNode = { id: "external-crm", label: "External CRM", kind: "external" };
 
 const allowedEvent: AuditEvent = {
@@ -61,6 +64,71 @@ const receivingClue: AuditEvent = {
   source_service: undefined,
 };
 
+function completedSend({ suffix, second, source, target, template = allowedEvent }: {
+  suffix: string;
+  second: number;
+  source: GraphNode;
+  target: GraphNode;
+  template?: AuditEvent;
+}) {
+  return {
+    ...template,
+    event_id: `evt-${suffix}`,
+    transfer_id: `xfer-${suffix}`,
+    occurred_at: `2026-11-21T03:10:${String(second).padStart(2, "0")}Z`,
+    observed_at: `2026-11-21T03:10:${second + 10}Z`,
+    service: source.id,
+    action: "DATA_SENT",
+    outcome: "COMPLETED",
+    source_service: source.id,
+    destination_service: target.id,
+  } satisfies AuditEvent;
+}
+
+function observedEdge(event: ReturnType<typeof completedSend>): GraphEdge {
+  return {
+    id: `edge-${event.event_id}`,
+    source: event.source_service,
+    target: event.destination_service,
+    evidence_status: "OBSERVED",
+    evidence_event_ids: [event.event_id],
+  };
+}
+
+const consentSend = completedSend({ suffix: "005", second: 4, source: customer, target: consent });
+const caseRouting = completedSend({ suffix: "006", second: 5, source: sales, target: caseRouter });
+const caseWrite = completedSend({ suffix: "007", second: 6, source: caseRouter, target: caseStore });
+const approvedBranches = [consentSend, caseRouting, caseWrite];
+const operationalEvents = approvedBranches.map((event) => ({
+  ...event, data_ref: "synthetic-ops-001", classification: "INTERNAL",
+}));
+const caseTemplate = { ...allowedEvent, data_ref: "synthetic-case-001" };
+const unrelatedCaseRouting = completedSend({
+  suffix: "006", second: 2, source: sales, target: caseRouter, template: caseTemplate,
+});
+const unrelatedCaseWrite = completedSend({
+  suffix: "007", second: 3, source: caseRouter, target: caseStore, template: caseTemplate,
+});
+
+const partialTemplate = { ...allowedEvent, trace_id: "trace-e-001", data_ref: "synthetic-subject-e-001" };
+const partialReceipt: AuditEvent = {
+  ...partialTemplate,
+  event_id: "evt-e-001",
+  transfer_id: "xfer-e-001",
+  service: sales.id,
+  action: "DATA_RECEIVED",
+};
+const partialOutbound = {
+  ...completedSend({ suffix: "e-002", second: 3, source: sales, target: external, template: partialTemplate }),
+  observed_at: "2026-11-21T03:10:32Z",
+};
+const partialIntake = completedSend({
+  suffix: "e-003", second: 0, source: consent, target: customer, template: partialTemplate,
+});
+const partialCaseWrite = completedSend({
+  suffix: "e-004", second: 2, source: sales, target: caseStore, template: partialTemplate,
+});
+
 const allowedEdge: GraphEdge = {
   id: "edge-customer-sales",
   source: customer.id,
@@ -83,9 +151,13 @@ const inferredEdge: GraphEdge = {
   evidence_event_ids: [allowedEvent.event_id, receivingClue.event_id],
 };
 
+const directEvents = [allowedEvent, processedEvent, deniedEvent, ...approvedBranches];
 const directAnalysis: AnalyzeResponse = {
-  summary: { status: "VERIFIED_VIOLATION", events_processed: 3 },
-  graph: { nodes: [customer, sales, external], edges: [allowedEdge, directEdge] },
+  summary: { status: "VERIFIED_VIOLATION", events_processed: directEvents.length },
+  graph: {
+    nodes: [customer, sales, external, consent, caseRouter, caseStore],
+    edges: [allowedEdge, directEdge, ...approvedBranches.map(observedEdge)],
+  },
   findings: [{
     id: "finding-denied-destination",
     rule_id: "DENY_EXTERNAL_PII",
@@ -99,29 +171,35 @@ const directAnalysis: AnalyzeResponse = {
 export const scenarioFixtures = {
   allowed_transfer: {
     scenario: { id: "allowed_transfer", label: "Allowed transfer" },
-    events: [allowedEvent],
+    events: [allowedEvent, ...operationalEvents],
     analysis: {
-      summary: { status: "NO_VIOLATION_OBSERVED", events_processed: 1 },
-      graph: { nodes: [customer, sales], edges: [allowedEdge] },
+      summary: { status: "NO_VIOLATION_OBSERVED", events_processed: 1 + operationalEvents.length },
+      graph: {
+        nodes: [customer, sales, consent, caseRouter, caseStore],
+        edges: [allowedEdge, ...operationalEvents.map(observedEdge)],
+      },
       findings: [],
     },
   },
   unauthorized_transfer: {
     scenario: { id: "unauthorized_transfer", label: "Unauthorized transfer" },
-    events: [allowedEvent, processedEvent, deniedEvent],
+    events: directEvents,
     analysis: directAnalysis,
   },
   shuffled_transfer: {
     scenario: { id: "shuffled_transfer", label: "Shuffled audit events" },
-    events: [deniedEvent, allowedEvent, processedEvent],
+    events: [caseWrite, deniedEvent, allowedEvent, caseRouting, processedEvent, consentSend],
     analysis: directAnalysis,
   },
   missing_intermediate: {
     scenario: { id: "missing_intermediate", label: "Missing intermediate evidence" },
-    events: [allowedEvent, receivingClue],
+    events: [allowedEvent, unrelatedCaseRouting, unrelatedCaseWrite, receivingClue],
     analysis: {
-      summary: { status: "POTENTIAL_VIOLATION", events_processed: 2 },
-      graph: { nodes: [customer, sales, external], edges: [allowedEdge, inferredEdge] },
+      summary: { status: "POTENTIAL_VIOLATION", events_processed: 4 },
+      graph: {
+        nodes: [customer, sales, external, caseRouter, caseStore],
+        edges: [allowedEdge, inferredEdge, observedEdge(unrelatedCaseRouting), observedEdge(unrelatedCaseWrite)],
+      },
       findings: [{
         id: "finding-unconfirmed-destination",
         rule_id: "DENY_EXTERNAL_PII",
@@ -130,6 +208,44 @@ export const scenarioFixtures = {
         evidence_event_ids: [receivingClue.event_id],
         missing_evidence: ["Completed send event linking Sales API to External CRM."],
       }],
+    },
+  },
+  partial_evidence_confirmed: {
+    scenario: { id: "partial_evidence_confirmed", label: "Partial evidence, confirmed violation" },
+    events: [partialIntake, partialReceipt, partialCaseWrite, partialOutbound],
+    analysis: {
+      summary: { status: "VERIFIED_VIOLATION", events_processed: 4 },
+      graph: {
+        nodes: [consent, customer, sales, caseStore, external],
+        edges: [
+          observedEdge(partialIntake),
+          {
+            ...allowedEdge,
+            evidence_status: "INFERRED",
+            evidence_event_ids: [partialReceipt.event_id],
+          },
+          observedEdge(partialCaseWrite),
+          observedEdge(partialOutbound),
+        ],
+      },
+      findings: [
+        {
+          id: "finding-missing-upstream-send",
+          rule_id: "TRANSFER_POLICY",
+          status: "INCONCLUSIVE",
+          message: "The Sales API receipt lacks a matching completed send from Customer API.",
+          evidence_event_ids: [partialReceipt.event_id],
+          missing_evidence: ["Completed send event linking Customer API to Sales API."],
+        },
+        {
+          id: "finding-denied-destination",
+          rule_id: "DENY_EXTERNAL_PII",
+          status: "VERIFIED_VIOLATION",
+          message: "Completed transfer to an unapproved destination.",
+          evidence_event_ids: [partialOutbound.event_id],
+          missing_evidence: [],
+        },
+      ],
     },
   },
 } satisfies Record<string, ScenarioFixture>;

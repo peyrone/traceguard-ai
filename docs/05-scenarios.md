@@ -2,15 +2,15 @@
 
 | Scenario | Evidence sketch | Expected result | Primary test |
 |---|---|---|---|
-| S01 Allowed | customer-api -> sales-api, approved purpose and destination, completed transfer | `NO_VIOLATION_OBSERVED` | No false positives |
-| S02 External leak | sales-api -> external-crm, direct `DATA_SENT` with `COMPLETED`, denied destination | `VERIFIED_VIOLATION` | Strong evidence IDs |
-| S03 Shuffled | Same exact event IDs and timestamps as S02, shuffled arrival | Same result as S02 | Permutation invariance |
-| S04 Missing intermediate | external receiving clue or partial transfer details; attribution requires an unobserved intermediate link | `POTENTIAL_VIOLATION` or `INCONCLUSIVE` per evidence specificity | No invented confirmed edge |
-| S05 Partial evidence, confirmed violation | `evt-e-001` records receipt by `sales-api` from `customer-api`. `evt-e-002` records a completed send of synthetic PII from `sales-api` to `external-crm`, a destination outside the policy allowlist. | `VERIFIED_VIOLATION` overall. The outbound edge is `OBSERVED`. The upstream edge is `INFERRED` and its finding is `INCONCLUSIVE`. | The outbound finding cites `evt-e-002`. The upstream finding cites `evt-e-001` and lists the missing completed send. |
+| S01 Allowed (5 nodes) | `customer-api → sales-api` carries approved synthetic PII. Operational records also show `customer-api → consent-api` and `sales-api → case-router → case-store`. | `NO_VIOLATION_OBSERVED` | All four edges are observed. Only `evt-001` is in scope for the PII policy. |
+| S02 External leak (6 nodes) | Alongside approved PII transfers to the consent and case services, `sales-api → external-crm` carries synthetic PII for marketing. | `VERIFIED_VIOLATION` | The outbound edge and the finding cite the completed send `evt-003`. |
+| S03 Shuffled (6 nodes) | All six S02 audit records appear in a different input order. | Same result as S02 | The full analysis response is identical despite the permutation. |
+| S04 Missing intermediate (5 nodes) | `external-crm` reports receipt in `evt-004` with no sender. `evt-001` supplies the prior hop to `sales-api`. The observed `sales-api → case-router → case-store` branch shares the trace ID and carries a separate data reference. | `POTENTIAL_VIOLATION` | The inferred outbound edge cites `evt-001` and `evt-004`. The finding cites the receipt and asks for a matching completed send. |
+| S05 Partial evidence, confirmed violation (5 nodes) | `consent-api → customer-api` and `sales-api → case-store` are observed. `evt-e-001` records receipt by `sales-api` from `customer-api`. `evt-e-002` records a completed PII send from `sales-api` to `external-crm`. | `VERIFIED_VIOLATION` overall. The upstream link remains `INFERRED` with an `INCONCLUSIVE` finding. | The outbound finding cites `evt-e-002`. The upstream finding cites `evt-e-001` and lists the missing completed send. |
 
 Load S05 with `scenario_id` set to `partial_evidence_confirmed`. [Fixture](../backend/internal/adapters/fixtures/data/partial_evidence_confirmed.json)
 
-Additional cases if time: attempted/failed transfer, duplicate log lines, mixed purposes, irrelevant services.
+Additional cases if time: attempted and failed transfers, duplicate log lines, and conflicting receipts.
 
 ## Golden acceptance cases
 1. Graph edges are reproducible when event list order changes.
