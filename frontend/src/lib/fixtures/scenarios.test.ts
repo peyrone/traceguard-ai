@@ -45,3 +45,12 @@ test("all five scenarios have connected service nodes and traceable evidence", (
   assert.equal(missing.summary.status, "POTENTIAL_VIOLATION");
   assert.equal(missing.graph.edges.find(({ target }) => target === "external-crm")?.evidence_status, "INFERRED");
 });
+
+test("all allowed-scenario transfers are classified under the demo PII policy", () => {
+  const { events } = scenarioFixtures.allowed_transfer;
+  assert.equal(events.length, 4);
+  for (const event of events) {
+    assert.equal(event.classification, "PII", event.event_id);
+    assert.equal(event.purpose, "CUSTOMER_SERVICE", event.event_id);
+  }
+});
