@@ -64,6 +64,10 @@ Output: `{ "explanation": "...", "next_steps": ["..."], "evidence_event_ids": ["
 
 If OpenAI API is unavailable, serve a deterministic explanation referencing the same evidence IDs. Preserve timeouts.
 
+For a matched server-owned scenario, the response can also include `insights` and `gdpr_mappings`. Insights contain a `kind` (`observation`, `policy_concern`, or `uncertainty`), `text`, and `evidence_event_ids`. A GDPR mapping includes a curated `reference` (article with paragraph and point, official title, applicability criteria, official source and guidance URLs), `assessment` (`potential_concern` or `insufficient_information`), `rationale`, `evidence_event_ids`, and `missing_facts`.
+
+Nested citations can reference related scenario evidence and do not change the selected finding's top-level citations or evaluator verdict. Mappings are investigative assessments. An empty or omitted mapping list conveys no conclusion about legal compliance. Official URLs come from the server's curated reference. In `ai` mode, the provider has successfully prioritised validated actions and, when supplied, server-grounded insights and mappings. In `fallback` mode, Go renders the deterministic results.
+
 ## `POST /api/v1/privacy/decisions`
 
 The operation evaluates a server-owned demo policy and invokes the synthetic executor only on `ALLOW`. It sends no customer data and makes no external transfer. Its result records a simulated attempt and supplies no historical lineage evidence.

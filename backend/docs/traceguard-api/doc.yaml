@@ -394,3 +394,49 @@ components:
         mode:
           type: string
           enum: [ai, fallback]
+        insights:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvestigationInsight'
+        gdpr_mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/GDPRMapping'
+    InvestigationInsight:
+      type: object
+      required: [kind, text, evidence_event_ids]
+      properties:
+        kind:
+          type: string
+          enum: [observation, policy_concern, uncertainty]
+        text: *id001
+        evidence_event_ids:
+          type: array
+          items: *id001
+    GDPRReference:
+      type: object
+      required: [article, title, criteria, source_url, guidance_url]
+      properties:
+        article:
+          type: string
+          description: Article number with paragraph and point where applicable.
+        title: *id001
+        criteria: *id001
+        source_url: *id001
+        guidance_url: *id001
+    GDPRMapping:
+      type: object
+      required: [reference, assessment, rationale, evidence_event_ids, missing_facts]
+      properties:
+        reference:
+          $ref: '#/components/schemas/GDPRReference'
+        assessment:
+          type: string
+          enum: [potential_concern, insufficient_information]
+        rationale: *id001
+        evidence_event_ids:
+          type: array
+          items: *id001
+        missing_facts:
+          type: array
+          items: *id001
