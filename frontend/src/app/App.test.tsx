@@ -187,8 +187,8 @@ test('the explanation separates an observed export from inferred upstream eviden
       }],
     },
     findings: [
-      analysis.findings[0],
       { ...analysis.findings[1], evidence_event_ids: ['evt-upstream'] },
+      analysis.findings[0],
     ],
   };
   const fetch = vi.fn(async (url: string) => ({
@@ -256,4 +256,24 @@ test('transfer tests display the decision and execution result returned by the A
   expect(screen.getByText(/Destination denied/)).toBeTruthy();
   const posted = fetch.mock.calls.filter(([url]) => url.endsWith('/privacy/decisions'));
   expect(posted.map(([, init]) => JSON.parse(String(init?.body)).destination_service)).toEqual(['sales-api', 'external-crm']);
+});
+
+test('the operational case write submits the route and category shown in the preview', async () => {
+  mockAPI();
+  const decidePrivacy = vi.fn().mockResolvedValue({
+    decision: 'INDETERMINATE', transfer_executed: false, rule_id: 'TRANSFER_POLICY',
+    reason: 'The selected privacy policy does not cover every data category.',
+  });
+  render(<App client={{ ...createApiClient(), decidePrivacy }} />);
+  const panel = within(screen.getByRole('region', { name: 'Simulated transfer enforcement' }));
+  const user = userEvent.setup();
+  await user.selectOptions(panel.getByLabelText('Transfer case'), panel.getByRole('option', { name: 'Operational case write' }));
+  const details = within(panel.getByRole('group', { name: 'Transfer details' }));
+  for (const value of ['case-router', 'case-store', 'INTERNAL']) expect(details.getByText(value)).toBeTruthy();
+  await user.click(panel.getByRole('button', { name: 'Test transfer' }));
+  expect(await panel.findByText('INDETERMINATE · Blocked before execution')).toBeTruthy();
+  expect(decidePrivacy).toHaveBeenCalledWith({
+    source_service: 'case-router', destination_service: 'case-store', data_categories: ['INTERNAL'],
+    purpose: 'CUSTOMER_SERVICE', policy_id: 'policy-001',
+  }, expect.anything());
 });

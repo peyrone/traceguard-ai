@@ -4,11 +4,12 @@ import "./transfer-test.css";
 import type { PrivacyDecisionRequest, PrivacyDecisionResponse } from "../../lib/api/types";
 
 const transferCases = [
-  { label: "Internal sales transfer", source: "customer-api", destination: "sales-api" },
-  { label: "External CRM transfer", source: "sales-api", destination: "external-crm" },
+  { label: "Internal sales transfer", source: "customer-api", destination: "sales-api", category: "PII" },
+  { label: "External CRM transfer", source: "sales-api", destination: "external-crm", category: "PII" },
+  { label: "Operational case write", source: "case-router", destination: "case-store", category: "INTERNAL" },
 ];
 
-const policy = { policy_id: "policy-001", data_categories: ["PII"], purpose: "CUSTOMER_SERVICE" };
+const policy = { policy_id: "policy-001", purpose: "CUSTOMER_SERVICE" };
 
 interface Props {
   decide: (request: PrivacyDecisionRequest, signal?: AbortSignal) => Promise<PrivacyDecisionResponse>;
@@ -28,7 +29,7 @@ export function TransferTestPanel({ decide }: Props) {
     try {
       setResult(await decide({
         source_service: current.source, destination_service: current.destination,
-        ...policy,
+        ...policy, data_categories: [current.category],
       }, AbortSignal.timeout(6000)));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The privacy decision request failed.");
@@ -64,7 +65,7 @@ export function TransferTestPanel({ decide }: Props) {
             <div><span>Destination</span><code>{current.destination}</code></div>
           </div>
           <dl className="transfer-attributes">
-            <div><dt>Data category</dt><dd>{policy.data_categories.join(", ")}</dd></div>
+            <div><dt>Data category</dt><dd>{current.category}</dd></div>
             <div><dt>Purpose</dt><dd>{policy.purpose}</dd></div>
           </dl>
         </div>

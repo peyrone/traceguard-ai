@@ -92,7 +92,11 @@ jobs:
 
           echo 'Checking scenario list'
           curl "${curl_args[@]}" "$api/api/v1/scenarios" |
-            jq -e 'type == "array" and length == 4 and any(.[]; .id == "unauthorized_transfer")' >/dev/null
+            jq -e '
+              map(.id) as $available
+              | ["allowed_transfer", "unauthorized_transfer", "shuffled_transfer",
+                 "missing_intermediate", "partial_evidence_confirmed"] - $available == []
+            ' >/dev/null
 
           echo 'Checking CORS preflight'
           curl "${curl_args[@]}" --dump-header - --output /dev/null \

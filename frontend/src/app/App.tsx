@@ -73,7 +73,8 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
         const result = await client.analyze(scenarioID, controller.signal);
         if (controller.signal.aborted) return;
         setAnalysis(result);
-        setSelectedFindingId(result.findings[0]?.id ?? null);
+        const primaryFinding = result.findings.find(finding => finding.status === result.summary.status);
+        setSelectedFindingId(primaryFinding?.id ?? result.findings[0]?.id ?? null);
       } catch (error) {
         if (!controller.signal.aborted) setAnalysisError(errorMessage(error));
       } finally {
