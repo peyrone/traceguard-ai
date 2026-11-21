@@ -1,0 +1,144 @@
+package tracehttp
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
+	api "github.com/peyrone/traceguard-ai/backend/cmd/traceguard-api/handlers/http/api_gen"
+	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/entities"
+	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/ports"
+)
+
+type server struct {
+	fixtures ports.Fixtures
+	lineage  ports.Lineage
+	detector ports.Detector
+}
+
+func Register(router *echo.Echo, fixtures ports.Fixtures, lineage ports.Lineage, detector ports.Detector) {
+	api.RegisterHandlers(router, &server{fixtures: fixtures, lineage: lineage, detector: detector})
+}
+
+func (s *server) Healthz(c echo.Context) error {
+	return c.JSON(http.StatusOK, api.Health{Status: "ok"})
+}
+
+func (s *server) ListScenarios(c echo.Context) error {
+	result := []api.Scenario{}
+	if s.fixtures != nil {
+		for _, scenario := range s.fixtures.List() {
+			result = append(result, api.Scenario{Id: scenario.ID, Label: scenario.Label})
+		}
+	}
+	return c.JSON(http.StatusOK, result)
+}
+
+func (s *server) Analyze(c echo.Context) error {
+	ctx := c.Request().Context()
+	var request api.AnalyzeRequest
+	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, 2<<20)
+	dec := json.NewDecoder(c.Request().Body)
+	if err := dec.Decode(&request); err != nil || dec.Decode(new(any)) != io.EOF {
+		return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Expected one JSON request object.")
+	}
+	var events []entities.Event
+	var policy entities.Policy
+	if request.ScenarioId != nil {
+		if *request.ScenarioId == "" || (request.Events != nil && len(*request.Events) > 0) {
+			return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Supply a scenario ID or explicit events and policy.")
+		}
+		if s.fixtures == nil {
+			return fail(c, http.StatusNotFound, "SCENARIO_NOT_FOUND", "Unknown scenario.")
+		}
+		var err error
+		events, policy, err = s.fixtures.Load(ctx, *request.ScenarioId)
+		if errors.Is(err, ports.ErrScenarioNotFound) {
+			return fail(c, http.StatusNotFound, "SCENARIO_NOT_FOUND", "Unknown scenario.")
+		}
+		if err != nil {
+			return fail(c, http.StatusInternalServerError, "ANALYSIS_FAILED", "Could not load the scenario.")
+		}
+	} else if request.Events == nil || request.Policy == nil {
+		return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Supply a scenario ID or explicit events and policy.")
+	} else {
+		for _, event := range *request.Events {
+			if event.EventId == "" || event.Service == "" || event.Action == "" || event.OccurredAt.IsZero() || event.ObservedAt.IsZero() || !validOutcome(string(event.Outcome)) {
+				return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Each event must have an ID, service, action, valid outcome, and both timestamps.")
+			}
+			events = append(events, entities.Event{
+				EventID: event.EventId, TraceID: optional(event.TraceId), TransferID: optional(event.TransferId),
+				OccurredAt: event.OccurredAt, ObservedAt: event.ObservedAt,
+				Service: event.Service, Action: event.Action, Outcome: string(event.Outcome),
+				SourceService: optional(event.SourceService), DestinationService: optional(event.DestinationService),
+				DataRef: optional(event.DataRef), Classification: optional(event.Classification), Purpose: optional(event.Purpose),
+			})
+		}
+	}
+	if p := request.Policy; p != nil {
+		if p.PolicyId == "" || p.Classification == "" || p.AllowedDestinations == nil || p.AllowedPurposes == nil {
+			return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Policy requires an ID, classification, allowed destinations, and allowed purposes.")
+		}
+		policy = entities.Policy{PolicyID: p.PolicyId, Classification: p.Classification, AllowedDestinations: p.AllowedDestinations, AllowedPurposes: p.AllowedPurposes}
+	}
+	var graph entities.Graph
+	if s.lineage != nil {
+		events, graph = s.lineage.Reconstruct(events)
+	}
+	var findings []entities.Finding
+	if s.detector != nil {
+		var err error
+		findings, err = s.detector.Detect(ctx, events, graph, policy)
+		if err != nil {
+			return fail(c, http.StatusInternalServerError, "ANALYSIS_FAILED", "Could not evaluate the policy.")
+		}
+	}
+	return c.JSON(http.StatusOK, response(len(events), graph, findings))
+}
+
+func response(count int, graph entities.Graph, findings []entities.Finding) api.AnalyzeResponse {
+	result := api.AnalyzeResponse{
+		Summary:  api.Summary{Status: api.Status(entities.Inconclusive), EventsProcessed: count},
+		Graph:    api.Graph{Nodes: []api.Node{}, Edges: []api.Edge{}},
+		Findings: []api.Finding{},
+	}
+	for _, node := range graph.Nodes {
+		result.Graph.Nodes = append(result.Graph.Nodes, api.Node{Id: node.ID, Kind: node.Kind, Label: node.Label})
+	}
+	for _, edge := range graph.Edges {
+		result.Graph.Edges = append(result.Graph.Edges, api.Edge{
+			Id: edge.ID, Source: edge.Source, Target: edge.Target, EvidenceStatus: api.EdgeEvidenceStatus(edge.EvidenceStatus),
+			EvidenceEventIds: append([]string{}, edge.EvidenceEventIDs...),
+		})
+	}
+	rank := map[entities.Status]int{entities.VerifiedViolation: 4, entities.PotentialViolation: 3, entities.Inconclusive: 2, entities.NoViolationObserved: 1}
+	highest := 0
+	for _, f := range findings {
+		if severity := rank[f.Status]; count > 0 && severity > highest {
+			highest = severity
+			result.Summary.Status = api.Status(f.Status)
+		}
+		result.Findings = append(result.Findings, api.Finding{
+			Id: f.ID, RuleId: f.RuleID, Status: api.Status(f.Status), Message: f.Message,
+			EvidenceEventIds: append([]string{}, f.EvidenceEventIDs...), MissingEvidence: append([]string{}, f.MissingEvidence...),
+		})
+	}
+	return result
+}
+
+func optional(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func validOutcome(outcome string) bool {
+	return outcome == "COMPLETED" || outcome == "ATTEMPTED" || outcome == "FAILED"
+}
+
+func fail(c echo.Context, status int, code, message string) error {
+	return c.JSON(status, api.Error{Code: code, Message: message})
+}
