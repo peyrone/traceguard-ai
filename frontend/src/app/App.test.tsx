@@ -132,3 +132,22 @@ test('an explanation error leaves finding evidence available and can be retried'
   await user.click(screen.getByRole('button', { name: 'Retry explanation' }));
   expect(await screen.findByText('Rule-based fallback')).toBeTruthy();
 });
+
+test('link counts and the evidence filter follow the analysis and selected finding', async () => {
+  mockAPI();
+  const user = userEvent.setup();
+  render(<App client={createApiClient()} />);
+  const references = within(await screen.findByRole('region', { name: 'Evidence references' }));
+  const composition = screen.getByRole('figure', { name: 'Link evidence' });
+  expect(composition.textContent).toMatch(/Observed 1/);
+  expect(composition.textContent).toMatch(/Inferred 0/);
+
+  await user.click(references.getByRole('button', { name: /Selected finding/ }));
+  expect(references.queryByRole('button', { name: 'evt-unknown' })).toBeNull();
+  expect(references.getByRole('button', { name: 'evt-003' })).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: /UNMATCHED/ }));
+  expect(references.getByRole('button', { name: 'evt-unknown' })).toBeTruthy();
+  expect(references.queryByRole('button', { name: 'evt-003' })).toBeNull();
+  await user.click(references.getByRole('button', { name: /All references/ }));
+  expect(references.getAllByRole('row')).toHaveLength(3);
+});

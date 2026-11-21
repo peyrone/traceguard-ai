@@ -23,10 +23,40 @@
 .lineage-canvas .react-flow__controls-button { width: 44px; height: 44px; min-height: 44px; border: 1px solid #786786; background: #392f45; color: #fff; }
 .lineage-canvas .react-flow__controls-button svg { fill: currentColor; }
 .lineage-empty, .node-details { padding: 14px 20px; }
-.graph-legend { display: flex; gap: 20px; padding: 10px 20px; color: var(--muted); font-size: 14px; }
-.graph-legend span { display: inline-flex; align-items: center; gap: 7px; }
-.graph-legend span::before { content: ''; width: 20px; border-top: 2px solid var(--accent); }
-.graph-legend span + span::before { border-top-style: dashed; }
+/* Solid and hatched fills echo the line styles in the map. */
+.link-composition {
+  margin: 0;
+  padding: 13px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.link-composition figcaption { font-weight: 650; font-size: 14px; }
+.composition-meter {
+  flex: 1 1 90px;
+  display: flex;
+  height: 9px;
+  overflow: hidden;
+  background: var(--soft);
+  border-radius: 3px;
+}
+.composition-meter > span { flex-basis: 0; }
+.observed-fill { background: var(--link-ink); }
+.inferred-fill { background: repeating-linear-gradient(120deg, var(--link-light) 0 3px, var(--link-ink) 3px 5px); }
+.composition-key, .composition-key span { display: flex; align-items: center; }
+.composition-key { gap: 15px; color: var(--muted); font-size: 13px; }
+.composition-key span { gap: 5px; }
+.composition-key i { width: 17px; border-top: 2px solid var(--link-ink); }
+.composition-key .inferred-key { border-top-style: dashed; }
+.composition-key b { font: 650 14px var(--mono); color: var(--ink); }
+.lineage-canvas .react-flow__background {
+  background-image: radial-gradient(ellipse at 30% 35%, #47335475, transparent 74%);
+}
+.lineage-canvas .react-flow__node { border-radius: 12px; box-shadow: 0 6px 20px #110b1855; }
+.lineage-canvas .react-flow__node.selected { box-shadow: 0 0 0 5px #bd9bea26, 0 8px 20px #100a1844; }
+.service-kind svg { width: 23px; height: 23px; border-radius: 5px; padding: 3px; background: #58456a; }
+.lineage-node--external .service-kind svg { background: #574536; }
 .node-details { display: grid; gap: 7px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
 .node-details label { font-weight: 650; font-size: 14px; }
 .node-details select { width: 100%; }

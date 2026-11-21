@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { Icon } from '../components/Icon';
+import { LinkComposition } from '../features/lineage/LinkComposition';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import { collectReferences, EvidenceReferences, ReferenceDialog } from '../features/investigation/EvidenceReferences';
 import { ControlledExplanation, InvestigationPanel, statusLabels } from '../features/investigation/InvestigationPanel';
@@ -162,10 +164,13 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
             </>
           )}
           {analysis && <div className="result-banner" data-status={analysis.summary.status} role="status">
+            <span className="result-symbol" aria-hidden="true">
+              <Icon name="shield" size={34} /><b>{analysis.summary.status === 'NO_VIOLATION_OBSERVED' ? '−' : analysis.summary.status === 'INCONCLUSIVE' ? '?' : '!'}</b>
+            </span>
             <div><span className="eyebrow">Analysis result</span><h2>{statusLabels[analysis.summary.status]}</h2>
             {analysis.summary.status === 'NO_VIOLATION_OBSERVED' && <p>Available events do not prove compliance.</p>}</div>
-            <div className="metrics"><span><b>{analysis.summary.events_processed}</b> events processed</span>
-              <span><b>{analysis.findings.length}</b> {analysis.findings.length === 1 ? 'finding' : 'findings'}</span></div>
+            <div className="metrics"><span><Icon name="activity" /><b>{analysis.summary.events_processed}</b> events processed</span>
+              <span><Icon name="finding" /><b>{analysis.findings.length}</b> {analysis.findings.length === 1 ? 'finding' : 'findings'}</span></div>
           </div>}
         </section>
         {analysis && graph && <>
@@ -182,9 +187,9 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
               }}
             />
             <section className="graph-panel surface" aria-labelledby="graph-title">
-              <header className="panel-heading"><h2 id="graph-title">Service lineage</h2><span>{graph.nodes.length} services</span></header>
+              <header className="panel-heading"><h2 id="graph-title"><Icon name="network" />Service lineage</h2><span>{graph.nodes.length} services</span></header>
               <LineageGraph graph={graph} selectedFindingId={selectedFindingId} onSelectNode={setSelectedNodeId} highlightedEdgeIds={highlightedEdgeIds} />
-              <div className="graph-legend"><span>Observed</span><span>Inferred</span></div>
+              <LinkComposition edges={graph.edges} />
               <NodeDetails onInspect={setReferenceId} graph={graph} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />
             </section>
             {selectedFinding && <ControlledExplanation
@@ -196,7 +201,7 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
               onExplain={() => void explainFinding()}
             />}
           </div>
-          <EvidenceReferences references={references} onInspect={setReferenceId} />
+          <EvidenceReferences graph={graph} selectedFindingId={selectedFindingId} references={references} onInspect={setReferenceId} />
           {selectedReference && <ReferenceDialog item={selectedReference} graph={graph} onClose={() => setReferenceId(null)} />}
         </>}
       </main>

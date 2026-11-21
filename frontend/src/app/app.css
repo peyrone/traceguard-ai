@@ -115,3 +115,66 @@ dialog::backdrop { background: #17102190; }
   .panel-heading { padding: 12px 15px; }
   th, td { padding-inline: 12px; }
 }
+
+/* Shared visual language for the investigation panels. */
+:root {
+  --link-ink: #674594;
+  --link-light: #ded0f3;
+  --section-shadow: 0 2px 5px #32223f09, 0 12px 28px -24px #28133350;
+}
+:root[data-theme="dark"] {
+  --link-ink: #c8a6f2;
+  --link-light: #514063;
+  --section-shadow: 0 2px 8px #0002;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.surface { box-shadow: var(--section-shadow); border-radius: 15px; }
+.panel-heading h2 { display: inline-flex; align-items: center; gap: 10px; }
+.panel-heading h2 svg { color: var(--accent); flex: none; }
+.workspace-intro { padding-top: clamp(24px, 3vw, 44px); }
+.scenario-label select { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); font-weight: 600; }
+.result-banner { position: relative; padding: 18px 22px; border-radius: 12px; }
+.result-symbol {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 10%, var(--panel));
+  border-radius: 14px;
+}
+.result-symbol b { position: absolute; font: 700 17px var(--mono); }
+.result-banner .eyebrow { color: var(--tone); }
+.result-banner .metrics { gap: 24px; }
+.metrics span {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0 8px;
+  border-left: 1px solid color-mix(in srgb, var(--tone) 23%, var(--border));
+  padding-left: 20px;
+}
+.metrics svg { grid-row: span 2; color: var(--tone); }
+.metrics b { font-size: 23px; line-height: 1.15; }
+@media (max-width: 760px) {
+  .workspace-intro { padding-top: 18px; }
+  .result-banner { padding: 10px 14px; display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 4px 11px; }
+  .result-symbol { grid-row: span 2; width: 38px; height: 42px; border-radius: 10px; }
+  .result-symbol svg { width: 26px; }
+  .result-symbol b { font-size: 13px; }
+  .result-banner .metrics { grid-column: 2; flex-wrap: wrap; gap: 10px; }
+  .metrics span { display: inline; border: 0; padding: 0; }
+  .metrics svg { display: none; }
+  .metrics b { font-size: 15px; }
+}

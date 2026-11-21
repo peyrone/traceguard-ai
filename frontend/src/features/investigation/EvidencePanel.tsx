@@ -1,3 +1,4 @@
+import { ServiceRoute } from "./ServiceRoute";
 import { EvidenceId } from "./EvidenceId";
 import type { Finding, Graph } from "../../lib/api/types.ts";
 
@@ -28,8 +29,7 @@ export function EvidencePanel({ finding, graph, onInspect }: EvidencePanelProps)
             <ul className="tg-evidence-edges" aria-label="Related graph edges">
               {relatedEdges.map((edge) => (
                 <li key={edge.id}>
-                  <strong>{edge.evidence_status === "OBSERVED" ? "Observed transfer" : "Inferred link"}</strong>
-                  <span>{nodeLabels.get(edge.source) ?? edge.source} → {nodeLabels.get(edge.target) ?? edge.target}</span>
+                  <ServiceRoute edge={edge} labels={nodeLabels} />
                 </li>
               ))}
             </ul>

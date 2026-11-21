@@ -1,3 +1,4 @@
+import { Icon } from "../../components/Icon";
 import type { AnalysisStatus, Finding } from "../../lib/api/types.ts";
 import type { LoadState } from "./state.ts";
 
@@ -51,7 +52,7 @@ export function FindingsPanel({
   }
   return (
     <section className="tg-investigation-panel" aria-label="Findings">
-      <header className="panel-heading"><h2>Finding details</h2><span>{findings.length} {findings.length === 1 ? "finding" : "findings"}</span></header>
+      <header className="panel-heading"><h2><Icon name="finding" />Finding details</h2><span>{findings.length} {findings.length === 1 ? "finding" : "findings"}</span></header>
       {content}
     </section>
   );
