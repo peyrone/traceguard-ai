@@ -1,0 +1,306 @@
+openapi: 3.0.3
+info:
+  title: TraceGuard API
+  version: 0.1.0
+paths:
+  /healthz:
+    get:
+      operationId: Healthz
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /api/v1/scenarios:
+    get:
+      operationId: ListScenarios
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Scenario'
+  /api/v1/analyze:
+    post:
+      operationId: Analyze
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzeResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Scenario not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Analysis failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeRequest'
+  /api/v1/explain:
+    post:
+      operationId: Explain
+      description: Explain a selected finding using redacted audit evidence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExplainRequest'
+      responses:
+        '200':
+          description: Explanation and validated evidence references
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExplainResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Health:
+      type: object
+      properties:
+        status: &id001
+          type: string
+      required:
+      - status
+    Error:
+      type: object
+      properties:
+        code: *id001
+        message: *id001
+      required:
+      - code
+      - message
+    Scenario:
+      type: object
+      properties:
+        id: *id001
+        label: *id001
+      required:
+      - id
+      - label
+    Event:
+      type: object
+      properties:
+        event_id: *id001
+        trace_id: *id001
+        transfer_id: *id001
+        service: *id001
+        action: *id001
+        source_service: *id001
+        destination_service: *id001
+        data_ref: *id001
+        classification: *id001
+        purpose: *id001
+        occurred_at: &id002
+          type: string
+          format: date-time
+        observed_at: *id002
+        outcome:
+          type: string
+          enum:
+          - COMPLETED
+          - ATTEMPTED
+          - FAILED
+      required:
+      - event_id
+      - service
+      - action
+      - occurred_at
+      - observed_at
+      - outcome
+    Policy:
+      type: object
+      properties:
+        policy_id: *id001
+        classification: *id001
+        allowed_destinations:
+          type: array
+          items: *id001
+        allowed_purposes:
+          type: array
+          items: *id001
+      required:
+      - policy_id
+      - classification
+      - allowed_destinations
+      - allowed_purposes
+    AnalyzeRequest:
+      description: Use scenario_id alone or a non-null events array with policy. An
+        empty events array is accepted with scenario_id for compatibility with the
+        blueprint example. A supplied policy overrides the scenario policy.
+      properties:
+        scenario_id: *id001
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        policy:
+          $ref: '#/components/schemas/Policy'
+      type: object
+    Status:
+      type: string
+      enum:
+      - VERIFIED_VIOLATION
+      - POTENTIAL_VIOLATION
+      - INCONCLUSIVE
+      - NO_VIOLATION_OBSERVED
+    Summary:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        events_processed:
+          type: integer
+      required:
+      - status
+      - events_processed
+    Node:
+      type: object
+      properties:
+        id: *id001
+        label: *id001
+        kind: *id001
+      required:
+      - id
+      - label
+      - kind
+    Edge:
+      type: object
+      properties:
+        id: *id001
+        source: *id001
+        target: *id001
+        evidence_status:
+          type: string
+          enum:
+          - OBSERVED
+          - INFERRED
+        evidence_event_ids:
+          type: array
+          items: *id001
+      required:
+      - id
+      - source
+      - target
+      - evidence_status
+      - evidence_event_ids
+    Graph:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/Edge'
+      required:
+      - nodes
+      - edges
+    Finding:
+      type: object
+      properties:
+        id: *id001
+        rule_id: *id001
+        status:
+          $ref: '#/components/schemas/Status'
+        message: *id001
+        evidence_event_ids:
+          type: array
+          items: *id001
+        missing_evidence:
+          type: array
+          items: *id001
+      required:
+      - id
+      - rule_id
+      - status
+      - message
+      - evidence_event_ids
+      - missing_evidence
+    AnalyzeResponse:
+      type: object
+      properties:
+        summary:
+          $ref: '#/components/schemas/Summary'
+        graph:
+          $ref: '#/components/schemas/Graph'
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Finding'
+      required:
+      - summary
+      - graph
+      - findings
+    ExplainRequest:
+      type: object
+      required: [finding, rule_summary, evidence]
+      properties:
+        finding:
+          $ref: '#/components/schemas/Finding'
+        rule_summary:
+          type: string
+          description: Redacted summary of the applicable policy rule.
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExplainEvidence'
+    ExplainEvidence:
+      type: object
+      required: [event_id]
+      properties:
+        event_id:
+          type: string
+          description: Opaque audit event identifier.
+        action:
+          type: string
+        outcome:
+          type: string
+    ExplainResponse:
+      type: object
+      required: [explanation, next_steps, evidence_event_ids, mode]
+      properties:
+        explanation:
+          type: string
+        next_steps:
+          type: array
+          items:
+            type: string
+        evidence_event_ids:
+          type: array
+          items:
+            type: string
+        mode:
+          type: string
+          enum: [ai, fallback]
