@@ -40,7 +40,7 @@
       "action": "DATA_SENT",
       "outcome": "COMPLETED",
       "source_service": "sales-api",
-      "destination_service": "case-store",
+      "destination_service": "internal-crm",
       "data_ref": "synthetic-subject-e-001",
       "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
@@ -67,7 +67,7 @@
     "allowed_destinations": [
       "sales-api",
       "customer-api",
-      "case-store"
+      "internal-crm"
     ],
     "allowed_purposes": [
       "CUSTOMER_SERVICE"

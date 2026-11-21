@@ -25,7 +25,7 @@
       "action": "DATA_SENT",
       "outcome": "COMPLETED",
       "source_service": "sales-api",
-      "destination_service": "case-router",
+      "destination_service": "internal-gateway",
       "data_ref": "synthetic-case-001",
       "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
@@ -36,11 +36,11 @@
       "transfer_id": "xfer-007",
       "occurred_at": "2026-11-21T03:10:03Z",
       "observed_at": "2026-11-21T03:10:13Z",
-      "service": "case-router",
+      "service": "internal-gateway",
       "action": "DATA_SENT",
       "outcome": "COMPLETED",
-      "source_service": "case-router",
-      "destination_service": "case-store",
+      "source_service": "internal-gateway",
+      "destination_service": "internal-crm",
       "data_ref": "synthetic-case-001",
       "classification": "PII",
       "purpose": "CUSTOMER_SERVICE"
@@ -67,8 +67,8 @@
     "allowed_destinations": [
       "sales-api",
       "customer-api",
-      "case-router",
-      "case-store"
+      "internal-gateway",
+      "internal-crm"
     ],
     "allowed_purposes": [
       "CUSTOMER_SERVICE"
