@@ -44,14 +44,17 @@ export default function Report({ analysis, caseId, label, client }: Props) {
     <p className="report-scope">{t("Synthetic audit data ·")} {analysis.summary.events_processed} {t("events processed ·")} {analysis.findings.length} {t("findings")}</p>
     <section className="report-block"><h3>{t("Findings and explanations")}</h3>
       {loading && <p role="status">{t("Preparing explanations…")}</p>}
-      {analysis.findings.length === 0 && <p>{t("No violation was found in the available evidence. These events alone do not establish compliance.")}</p>}
+      {analysis.findings.length === 0 && <p>{t(analysis.summary.status === 'NO_VIOLATION_OBSERVED'
+        ? "No violation was found in the available evidence. These events alone do not establish compliance."
+        : "No finding details were returned for this case.")}</p>}
       {analysis.findings.map(f => {
         const note = notes?.get(f.id);
         return <section className="report-finding" key={f.id}>
           <span className="review-status" data-status={f.status}>{t(statusLabels[f.status])}</span>
           <h4>{t(f.message)}</h4><p className="report-citations">{t("Rule")} <code>{f.rule_id}</code> {t("· Evidence")} <code>{f.evidence_event_ids.join(', ') || t("None cited")}</code></p>
           {note && <>
-            <p>{note.explanation}</p>
+            {note.localFallback && <p>{t("Explanation service unavailable. This summary uses the loaded case evidence.")}</p>}
+            <p>{note.localFallback ? t(note.explanation) : note.explanation}</p>
             {note.evidence_event_ids.length > 0 && <p className="report-citations">{t("Explanation cites")} <code>{note.evidence_event_ids.join(', ')}</code></p>}
             {Boolean(note.insights?.length) && <><h5>{t("Investigation insights")}</h5><ul>{note.insights?.map((item, i) =>
               <li key={i}>{item.text} <code>{item.evidence_event_ids.join(', ')}</code></li>)}</ul></>}
@@ -61,13 +64,13 @@ export default function Report({ analysis, caseId, label, client }: Props) {
                 <p className="report-citations">{t("Evidence")} <code>{item.evidence_event_ids.join(', ')}</code> · <a href={item.reference.source_url}>{item.reference.title}</a></p>
               </li>)}</ul></>}
             {note.next_steps.length > 0 && <><h5>{note.mode === 'ai' ? t("AI-prioritized next steps") : t("Rule-based next steps")}</h5>
-              <ol>{note.next_steps.map(step => <li key={step}>{step}</li>)}</ol></>}
+              <ol>{note.next_steps.map(step => <li key={step}>{note.localFallback ? t(step) : step}</li>)}</ol></>}
           </>}
           {note === null && <p role="alert">{t("Explanation unavailable for this finding.")}</p>}
           {f.missing_evidence.length > 0 && <><h5>{t("Missing evidence")}</h5><ul>{f.missing_evidence.map(gap => <li key={gap}>{t(gap)}</li>)}</ul></>}
         </section>;
       })}
-      {notes && [...notes.values()].includes(null) && <button className="print-action" onClick={() => { setNotes(undefined); setAttempt(n => n + 1); }}>{t("Retry explanations")}</button>}
+      {notes && [...notes.values()].some(note => !note || note.localFallback) && <button className="print-action" onClick={() => { setNotes(undefined); setAttempt(n => n + 1); }}>{t("Retry explanations")}</button>}
     </section>
     <section className="report-block"><h3>{t("Transfer evidence")}</h3><p className="report-citations">{observed} {t("observed ·")} {analysis.graph.edges.length - observed} {t("inferred")}</p>
       {!analysis.graph.edges.length && <p>{t("No service links were returned.")}</p>}

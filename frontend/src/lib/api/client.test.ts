@@ -87,3 +87,22 @@ test("mock mode analyzes named scenarios and explains using the supplied finding
   assert.ok(result.next_steps.length > 0);
   await assert.rejects(client.analyze({ scenario_id: "unknown" }), /Unknown scenario/);
 });
+
+test("an unreachable explanation endpoint uses only evidence from the loaded finding", async () => {
+  const client = createTraceGuardClient({ fetch: async () => { throw new TypeError("Failed to fetch"); } });
+  const result = await client.explain({ ...request, evidence: [...request.evidence, { event_id: "other-case" }] });
+  assert.equal(result.mode, "fallback");
+  assert.equal(result.localFallback, true);
+  assert.equal(result.explanation, finding.message);
+  assert.deepEqual(result.evidence_event_ids, ["evt-003"]);
+  const empty = await client.explain({ ...request, evidence: [] });
+  assert.deepEqual(empty.evidence_event_ids, []);
+  await assert.rejects(client.explain(request, AbortSignal.abort()), { name: "AbortError" });
+});
+
+test("HTTP and invalid explanation responses remain retryable errors", async () => {
+  for (const response of [Response.json({}, { status: 403 }), Response.json({})]) {
+    const client = createTraceGuardClient({ fetch: async () => response });
+    await assert.rejects(client.explain(request));
+  }
+});

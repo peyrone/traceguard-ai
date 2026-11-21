@@ -1,6 +1,6 @@
 import { mockScenarios, scenarioFixtures } from "../fixtures/scenarios.ts";
 import { TraceGuardApiError } from "./client.ts";
-import { evidenceIdsForRequest } from "./explanation.ts";
+import { localExplanation } from "./explanation.ts";
 import type { TraceGuardClient } from "./types.ts";
 
 const fixturesById = new Map(Object.values(scenarioFixtures).map((fixture) => [fixture.scenario.id, fixture]));
@@ -22,15 +22,8 @@ export function createMockTraceGuardClient(): TraceGuardClient {
     },
     async explain(request, signal) {
       signal?.throwIfAborted();
-      const firstStep = request.finding.missing_evidence.length > 0
-        ? "Collect the missing audit records."
-        : "Review the supporting audit events.";
-      return {
-        explanation: [request.finding.message, request.rule_summary].join(" "),
-        next_steps: [firstStep, "Check the destination and purpose against the policy allowlists."],
-        evidence_event_ids: evidenceIdsForRequest(request),
-        mode: "fallback",
-      };
+      const { explanation, next_steps, evidence_event_ids } = localExplanation(request);
+      return { mode: "fallback", explanation: [explanation, request.rule_summary].join(" "), next_steps, evidence_event_ids };
     },
   };
 }

@@ -5,6 +5,7 @@ import { TransferTestPanel } from '../features/enforcement/TransferTestPanel';
 import { Icon } from '../components/Icon';
 import { LinkComposition } from '../features/lineage/LinkComposition';
 import { caseHref, readRoute, type CaseSection } from './navigation';
+import Report from './Report';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import { collectReferences, EvidenceReferences, ReferenceDialog } from '../features/investigation/EvidenceReferences';
 import { ControlledExplanation, InvestigationPanel, UpstreamEvidence, statusLabels } from '../features/investigation/InvestigationPanel';
@@ -14,7 +15,6 @@ import { api, type Analysis, type Explanation, type Scenario } from '../lib/api/
 
 const LineageGraph = lazy(() => import('../features/lineage/LineageGraph').then(module => ({ default: module.LineageGraph })));
 const Dashboard = lazy(() => import('./Dashboard'));
-const Report = lazy(() => import('./Report'));
 
 const resultRevealDelayMs = 500;
 const resultIcons = {
@@ -243,10 +243,7 @@ function CaseView({ scenario, section, client }: { scenario: Scenario; section: 
             </div>
           </div>}
         </section>
-        {report && analysis && <Suspense fallback={<p role="status">{t("Loading report…")}</p>}>
-          <Report key={scenarioID} caseId={scenarioID} label={scenario.label}
-            client={client} analysis={analysis} />
-        </Suspense>}
+        {report && analysis && <Report caseId={scenarioID} label={scenario.label} client={client} analysis={analysis} />}
         {!report && analysis && graph && <>
           <div className="workspace-grid">
             <InvestigationPanel
@@ -263,7 +260,7 @@ function CaseView({ scenario, section, client }: { scenario: Scenario; section: 
             <section className="graph-panel surface" aria-labelledby="graph-title">
               <header className="panel-heading"><h2 id="graph-title"><Icon name="network" />{t("Service lineage")}</h2><span>{graph.nodes.length} {t("services")}</span></header>
               <Suspense fallback={<p className="inset" role="status">{t("Loading service lineage…")}</p>}>
-                <LineageGraph graph={graph} selectedFindingId={selectedFindingId} onSelectNode={setSelectedNodeId} highlightedEdgeIds={highlightedEdgeIds} />
+                <LineageGraph graph={graph} onInspect={setReferenceId} onSelectNode={setSelectedNodeId} highlightedEdgeIds={highlightedEdgeIds} />
               </Suspense>
               <LinkComposition edges={graph.edges} />
               <NodeDetails onInspect={setReferenceId} graph={graph} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />

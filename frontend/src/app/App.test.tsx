@@ -419,3 +419,32 @@ test('Thai labels follow the current case and persist when the app reopens', asy
   await user.click(screen.getByRole('button', { name: 'English' }));
   expect(document.documentElement.lang).toBe('en');
 });
+
+test('workspace renders GDPR mappings independently of optional investigation insights', async () => {
+  mockAPI();
+  const client = createApiClient();
+  const explain = async () => ({
+    mode: 'fallback' as const, explanation: 'Review available evidence.', next_steps: [], evidence_event_ids: ['evt-003'],
+    gdpr_mappings: [{
+      reference: { article: '5', title: 'Reference', criteria: 'Review criteria', source_url: 'https://eur-lex.europa.eu/', guidance_url: 'https://www.edpb.europa.eu/' },
+      assessment: 'insufficient_information' as const, rationale: 'Evidence for the mapping', missing_facts: ['Purpose'], evidence_event_ids: ['evt-003'],
+    }],
+  });
+  render(<App client={{ ...client, explain }} />);
+  await userEvent.click(await screen.findByRole('button', { name: 'Explain finding' }));
+  expect(await screen.findByText('Evidence for the mapping')).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: 'Investigation insights' })).toBeNull();
+});
+
+test('a report with an inconclusive summary and no findings does not claim a clean verdict', async () => {
+  window.history.replaceState(null, '', '#report?case=one');
+  mockAPI();
+  const client = createApiClient();
+  render(<App client={{ ...client, analyze: async () => ({
+    ...analysis, summary: { status: 'INCONCLUSIVE', events_processed: 0 }, findings: [],
+  }) }} />);
+  const report = within(await screen.findByRole('article', { name: 'Case report' }));
+  expect(report.getByText('Inconclusive')).toBeTruthy();
+  expect(report.getByText('No finding details were returned for this case.')).toBeTruthy();
+  expect(report.queryByText(/No violation was found/)).toBeNull();
+});

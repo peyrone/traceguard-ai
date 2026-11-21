@@ -1,8 +1,8 @@
-import { createExplainRequest, evidenceIdsForRequest } from "./explanation.ts";
+import { createExplainRequest, evidenceIdsForRequest, localExplanation } from "./explanation.ts";
 import { isAnalyzeResponse, isErrorResponse, isExplainResponse, isPrivacyDecisionResponse, isScenarioList } from "./response.ts";
 import type { Finding, PrivacyDecisionRequest, PrivacyDecisionResponse, TraceGuardClient } from "./types.ts";
 
-export type { AnalysisStatus as Status, AnalyzeResponse as Analysis, ExplainResponse as Explanation, Finding, Scenario } from "./types.ts";
+export type { AnalysisStatus as Status, AnalyzeResponse as Analysis, Explanation, Finding, Scenario } from "./types.ts";
 
 type Endpoint = "scenarios" | "analyze" | "explain";
 const configuredBaseURL = import.meta.env?.VITE_API_BASE_URL?.trim() ?? "";
@@ -75,9 +75,8 @@ export function createTraceGuardClient({
       const deadline = AbortSignal.timeout(explanationDeadlineMs);
       const requestSignal = signal ? AbortSignal.any([signal, deadline]) : deadline;
       const result = await request("/explain", isExplainResponse, requestSignal, input).catch((error: unknown) => {
-        if (deadline.aborted && !signal?.aborted) {
-          throw new Error("The explanation request timed out. Try again.");
-        }
+        signal?.throwIfAborted();
+        if (error instanceof TypeError || deadline.aborted) return localExplanation(input);
         throw error;
       });
       const knownIds = new Set(evidenceIdsForRequest(input));
