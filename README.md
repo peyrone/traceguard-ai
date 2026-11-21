@@ -36,7 +36,7 @@ Use Go 1.25 and Node.js 24.15 or later in the 24.x release line. Run each comman
 3. In **Simulated transfer enforcement**, select a transfer and click **Test transfer**. The unauthorized outbound send returns `DENY`. The inferred upstream link returns `INDETERMINATE`. To try `ALLOW`, open **Allowed transfer** from the dashboard chart or enable **Include cases without violations** in the queue. Only `ALLOW` can execute the in-memory simulation. No data leaves the app during a transfer simulation.
 4. Select **View report** to inspect the findings and transfer evidence. Choose **Executive brief** or **Engineering report**, pick English or Thai, and select **Generate summary**. **Print / Save PDF** exports the displayed edition. **View full case report** returns to the detailed findings.
 
-The interface supports English and Thai. The dashboard shows case status and counts of observed and inferred links. It refreshes every minute while the tab is visible.
+The interface supports English and Thai. The dashboard shows case status and counts of observed and inferred links. **Auto refresh** starts off. Turn it on to refresh every minute while the tab is visible, or select **Refresh cases** to update manually.
 
 | Scenario ID | Analysis result | Evidence to inspect |
 | --- | --- | --- |

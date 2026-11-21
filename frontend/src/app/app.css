@@ -251,6 +251,16 @@ dialog::backdrop { background: #17102190; }
 }
 
 .overview-page, #report { padding-bottom: 40px; }
+.overview-refresh-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.overview-refresh-switch { display: inline-flex; align-items: center; gap: 8px; padding-inline: 8px; background: transparent; border-color: transparent; font-size: 13px; font-weight: 650; }
+.overview-refresh-switch:hover { background: var(--soft); }
+.overview-refresh-track { display: flex; align-items: center; width: 36px; height: 20px; padding: 2px; border: 1px solid var(--muted); border-radius: 20px; color: var(--muted); }
+.overview-refresh-track::before { content: ''; box-sizing: border-box; width: 14px; height: 14px; border: 1px solid currentColor; border-radius: 50%; background: currentColor; }
+.overview-refresh-switch[aria-checked="true"] .overview-refresh-track { border-color: var(--accent); background: var(--accent); color: var(--panel); }
+.overview-refresh-switch[aria-checked="true"] .overview-refresh-track::before { transform: translateX(16px); }
+@media (prefers-reduced-motion: no-preference) {
+  .overview-refresh-track::before { transition: transform 150ms ease; }
+}
 .overview-action, .case-actions a { display: inline-flex; gap: 8px; align-items: center; justify-content: center; color: var(--accent); font-weight: 650; }
 .overview-action:hover:not(:disabled), .case-actions a:hover { background: var(--soft); }
 .overview-meta, .report-citations, .report-scope { color: var(--muted); font-size: 14px; }
