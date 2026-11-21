@@ -73,10 +73,18 @@ func (s Service) Explain(ctx context.Context, finding entities.Finding, supplied
 
 func (s Service) explain(ctx context.Context, finding entities.Finding, supplied []Evidence, request Request, transfers map[string]entities.EvidenceStatus, fallbackSteps []string, review EvidenceReview) (Result, error) {
 	byID := make(map[string]Evidence, len(supplied))
+	conflicted := make(map[string]bool)
 	for _, item := range supplied {
-		if item.EventID != "" {
-			byID[item.EventID] = item
+		id := item.EventID
+		if id == "" || conflicted[id] {
+			continue
 		}
+		if previous, ok := byID[id]; ok && (previous.Action != item.Action || previous.Outcome != item.Outcome) {
+			delete(byID, id)
+			conflicted[id] = true
+			continue
+		}
+		byID[id] = item
 	}
 	citations := []string{}
 	request.Status = finding.Status
