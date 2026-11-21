@@ -1,0 +1,43 @@
+.lineage-canvas {
+  height: clamp(320px, 52vh, 500px);
+  background: #f7fafb;
+}
+
+.lineage-canvas .react-flow__node {
+  border-color: #a7bcb8;
+  border-radius: 8px;
+  color: #16352e;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.lineage-canvas .lineage-node--external {
+  background: #fff4df;
+  border-color: #c89e5f;
+  color: #654517;
+}
+
+.lineage-canvas .react-flow__node:focus-visible {
+  outline: 3px solid #21675c;
+  outline-offset: 4px;
+}
+
+.lineage-edge--observed .react-flow__edge-path {
+  stroke: #21675c;
+  stroke-width: 2;
+}
+
+.lineage-edge--inferred .react-flow__edge-path {
+  stroke: #725427;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.lineage-canvas .react-flow__edge-text {
+  font-weight: 650;
+}
+
+.lineage-empty {
+  margin: 0;
+  padding: 24px;
+}

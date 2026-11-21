@@ -1,0 +1,63 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #172d32;
+  background: #eaf0f1;
+  font-synthesis: none;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  width: min(1080px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: clamp(24px, 6vw, 72px) 0;
+}
+
+.app-header {
+  margin-bottom: 28px;
+}
+
+h1, h2, p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(34px, 6vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+h2 {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+header p {
+  margin-top: 8px;
+  color: #496167;
+  line-height: 1.5;
+}
+
+.graph-panel {
+  overflow: hidden;
+  border: 1px solid #c0ced0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.panel-header,
+.panel-footer {
+  padding: 16px clamp(16px, 3vw, 24px);
+}
+
+.panel-header {
+  border-bottom: 1px solid #dce5e7;
+}
+
+.panel-footer {
+  border-top: 1px solid #dce5e7;
+  color: #496167;
+  font-size: 14px;
+}
