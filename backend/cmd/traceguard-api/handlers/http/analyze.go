@@ -11,6 +11,7 @@ import (
 	api "github.com/peyrone/traceguard-ai/backend/cmd/traceguard-api/handlers/http/api_gen"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/entities"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/ports"
+	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/enforcement"
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/services/investigation"
 )
 
@@ -91,7 +92,28 @@ func (s *server) Analyze(c echo.Context) error {
 	if err != nil {
 		return fail(c, http.StatusInternalServerError, "ANALYSIS_FAILED", "Could not evaluate the policy.")
 	}
-	return c.JSON(http.StatusOK, response(len(events), graph, findings))
+	result := response(len(events), graph, findings)
+	if request.ScenarioId != nil && request.Policy == nil {
+		candidates := enforcement.Candidates(*request.ScenarioId, events, graph, policy)
+		items := make([]api.TransferCandidate, 0, len(candidates))
+		for _, candidate := range candidates {
+			request := candidate.Request
+			item := api.TransferCandidate{
+				Id: candidate.ID, EdgeId: candidate.EdgeID, EvidenceEventIds: candidate.EvidenceEventIDs,
+				EvidenceStatus: api.TransferCandidateEvidenceStatus(candidate.EvidenceStatus),
+				SourceService:  request.SourceService, DestinationService: request.DestinationService, PolicyId: request.PolicyID,
+			}
+			if len(request.DataCategories) > 0 {
+				item.Classification = &request.DataCategories[0]
+			}
+			if entities.Meaningful(request.Purpose) {
+				item.Purpose = &request.Purpose
+			}
+			items = append(items, item)
+		}
+		result.TransferCandidates = &items
+	}
+	return c.JSON(http.StatusOK, result)
 }
 
 func (s *server) analyze(ctx context.Context, events []entities.Event, policy entities.Policy) ([]entities.Event, entities.Graph, []entities.Finding, error) {

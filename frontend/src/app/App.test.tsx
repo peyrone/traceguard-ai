@@ -282,83 +282,55 @@ test('a late explanation cannot render after changing scenarios', async () => {
   expect(screen.queryByText('Stale explanation')).toBeNull();
 });
 
-test('transfer tests display the decision and execution result returned by the API', async () => {
-  const fallbackFetch = mockAPI();
+test('transfer selection is scoped to the scenario and stale responses are discarded', async () => {
+  let finish!: (response: Response) => void;
+  const pending = new Promise<Response>((resolve) => { finish = resolve; });
+  const external = {
+    id: 'two/a-b/evt-003', edge_id: 'ab', source_service: 'a', destination_service: 'b',
+    evidence_status: 'OBSERVED', evidence_event_ids: ['evt-003'],
+    classification: 'PII', purpose: 'MARKETING', policy_id: 'policy-two',
+  };
+  const forbidden = { ...external, id: 'two/foreign', destination_service: 'external-crm' };
+  let attempts = 0;
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
-    if (!url.endsWith('/privacy/decisions')) return fallbackFetch(url);
-    const request = JSON.parse(String(init?.body));
-    const internal = request.destination_service === 'sales-api';
-    return Response.json(internal
-      ? { decision: 'ALLOW', transfer_executed: true, reason: 'Policy permits this transfer.', rule_id: 'TRANSFER_POLICY' }
-      : { decision: 'DENY', transfer_executed: false, reason: 'Destination denied.', rule_id: 'DENY_EXTERNAL_PII' });
-  });
-  vi.stubGlobal('fetch', fetch);
-  const user = userEvent.setup();
-  render(<App client={createApiClient()} />);
-  await screen.findByRole('heading', { name: 'Verified violation' });
-  await user.selectOptions(screen.getByLabelText('Transfer case'), '0');
-  await user.click(screen.getByRole('button', { name: 'Test transfer' }));
-  expect(await screen.findByText('ALLOW · Simulation executed')).toBeTruthy();
-  await user.selectOptions(screen.getByLabelText('Transfer case'), '1');
-  const details = within(screen.getByRole('group', { name: 'Transfer details' }));
-  expect(details.getByText('sales-api')).toBeTruthy();
-  expect(details.getByText('external-crm')).toBeTruthy();
-  expect(details.queryByText('customer-api')).toBeNull();
-  expect(screen.queryByText('ALLOW · Simulation executed')).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Test transfer' }));
-  expect(await screen.findByText('DENY · Blocked before execution')).toBeTruthy();
-  expect(screen.getByText(/Destination denied/)).toBeTruthy();
-  const posted = fetch.mock.calls.filter(([url]) => url.endsWith('/privacy/decisions'));
-  expect(posted.map(([, init]) => JSON.parse(String(init?.body)).destination_service)).toEqual(['sales-api', 'external-crm']);
-});
-
-test('the operational case write submits the route and category shown in the preview', async () => {
-  mockAPI();
-  const decidePrivacy = vi.fn().mockResolvedValue({
-    decision: 'INDETERMINATE', transfer_executed: false, rule_id: 'TRANSFER_POLICY',
-    reason: 'The selected privacy policy does not cover every data category.',
-  });
-  render(<App client={{ ...createApiClient(), decidePrivacy }} />);
-  await screen.findByRole('heading', { name: 'Verified violation' });
-  const panel = within(screen.getByRole('region', { name: 'Simulated transfer enforcement' }));
-  const user = userEvent.setup();
-  await user.selectOptions(panel.getByLabelText('Transfer case'), panel.getByRole('option', { name: 'Operational case write' }));
-  const details = within(panel.getByRole('group', { name: 'Transfer details' }));
-  for (const value of ['case-router', 'case-store', 'INTERNAL']) expect(details.getByText(value)).toBeTruthy();
-  await user.click(panel.getByRole('button', { name: 'Test transfer' }));
-  expect(await panel.findByText('INDETERMINATE · Blocked before execution')).toBeTruthy();
-  expect(decidePrivacy).toHaveBeenCalledWith({
-    source_service: 'case-router', destination_service: 'case-store', data_categories: ['INTERNAL'],
-    purpose: 'CUSTOMER_SERVICE', policy_id: 'policy-001',
-  }, expect.anything());
-});
-
-test('a verified violation defaults the transfer test to the blocked CRM case', async () => {
-  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.endsWith('/scenarios')) {
-      return Response.json([{ id: 'allowed', label: 'Allowed flow' }, { id: 'confirmed', label: 'Confirmed violation' }]);
-    }
+    if (url.endsWith('/scenarios')) return Response.json([{ id: 'one', label: 'First' }, { id: 'two', label: 'Second' }]);
     if (url.endsWith('/privacy/decisions')) {
-      return Response.json({ decision: 'DENY', transfer_executed: false, reason: 'Destination denied.', rule_id: 'DENY_EXTERNAL_PII' });
+      attempts++;
+      if (attempts === 2) return pending;
+      return Response.json({ decision: 'DENY', transfer_executed: false, reason: 'Original purpose denied.', rule_id: 'DENY_PURPOSE' });
     }
     const { scenario_id } = JSON.parse(String(init?.body));
-    return Response.json(scenario_id === 'confirmed' ? analysis : {
-      ...analysis, summary: { status: 'NO_VIOLATION_OBSERVED', events_processed: 1 },
-    });
+    return Response.json({ ...analysis, transfer_candidates: scenario_id === 'two' ? [external, forbidden] : [] });
   });
   vi.stubGlobal('fetch', fetch);
   const user = userEvent.setup();
   render(<App client={createApiClient()} />);
-  await screen.findByRole('heading', { name: 'No violation observed' });
-  expect((screen.getByLabelText('Transfer case') as HTMLSelectElement).value).toBe('0');
+  const button = () => screen.getByRole('button', { name: 'Test transfer' }) as HTMLButtonElement;
+  const transfer = () => screen.getByLabelText('Scenario transfer') as HTMLSelectElement;
+  await screen.findByText('No transfer evidence is available to simulate.');
+  expect(button().disabled).toBe(true);
 
-  await user.selectOptions(screen.getByLabelText('Investigation case'), 'confirmed');
-  await screen.findByRole('heading', { name: 'Verified violation' });
-  expect((screen.getByLabelText('Transfer case') as HTMLSelectElement).value).toBe('1');
-  await user.click(screen.getByRole('button', { name: 'Test transfer' }));
+  await user.selectOptions(screen.getByLabelText('Investigation case'), 'two');
+  await screen.findByRole('option', { name: /a → b/ });
+  expect(transfer().options).toHaveLength(2);
+  expect(button().disabled).toBe(true);
+  await user.selectOptions(transfer(), external.id);
+  const details = within(screen.getByRole('group', { name: 'Transfer details' }));
+  for (const value of ['a', 'b', 'PII', 'MARKETING', 'evt-003']) expect(details.getByText(value)).toBeTruthy();
+  expect(screen.getByText('policy-two')).toBeTruthy();
+  await user.click(button());
   expect(await screen.findByText('DENY · Blocked before execution')).toBeTruthy();
-  const posted = fetch.mock.calls.find(([url]) => url.endsWith('/privacy/decisions'));
-  expect(JSON.parse(String(posted?.[1]?.body))).toMatchObject({
-    source_service: 'sales-api', destination_service: 'external-crm',
-  });
+  expect(screen.getByText(/Original purpose denied/)).toBeTruthy();
+  const posted = () => fetch.mock.calls.filter(([url]) => url.endsWith('/privacy/decisions'));
+  expect(JSON.parse(String(posted()[0][1]?.body))).toEqual({ scenario_id: 'two', candidate_id: external.id });
+
+  await user.click(button());
+  await user.selectOptions(screen.getByLabelText('Investigation case'), 'one');
+  await screen.findByText('No transfer evidence is available to simulate.');
+  expect(button().disabled).toBe(true);
+  expect(transfer().value).toBe('');
+  expect(posted()[1][1]?.signal?.aborted).toBe(true);
+  finish(Response.json({ decision: 'DENY', transfer_executed: false, reason: 'Stale transfer', rule_id: 'DENY_PURPOSE' }));
+  await pending;
+  expect(screen.queryByText(/Stale transfer|Original purpose denied/)).toBeNull();
 });

@@ -7,6 +7,7 @@ import type {
   GraphNode,
   Scenario,
   PrivacyDecisionResponse,
+  TransferCandidate,
 } from "./types.ts";
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -50,13 +51,25 @@ function isFinding(value: unknown): value is Finding {
     && isList(value.missing_evidence, isString);
 }
 
+function isTransferCandidate(value: unknown): value is TransferCandidate {
+  return isObject(value)
+    && isString(value.id) && isString(value.edge_id)
+    && isString(value.source_service) && isString(value.destination_service)
+    && (value.evidence_status === "OBSERVED" || value.evidence_status === "INFERRED")
+    && isList(value.evidence_event_ids, isString) && value.evidence_event_ids.length > 0
+    && (value.classification === undefined || isString(value.classification))
+    && (value.purpose === undefined || isString(value.purpose))
+    && isString(value.policy_id);
+}
+
 export function isAnalyzeResponse(value: unknown): value is AnalyzeResponse {
   return isObject(value)
     && isObject(value.summary) && isStatus(value.summary.status)
     && typeof value.summary.events_processed === "number" && Number.isInteger(value.summary.events_processed)
     && value.summary.events_processed >= 0
     && isObject(value.graph) && isList(value.graph.nodes, isGraphNode) && isList(value.graph.edges, isGraphEdge)
-    && isList(value.findings, isFinding);
+    && isList(value.findings, isFinding)
+    && (value.transfer_candidates === undefined || isList(value.transfer_candidates, isTransferCandidate));
 }
 
 export function isExplainResponse(value: unknown): value is ExplainResponse {

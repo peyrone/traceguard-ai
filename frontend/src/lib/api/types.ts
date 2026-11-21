@@ -60,10 +60,23 @@ export interface Finding {
   missing_evidence: string[];
 }
 
+export interface TransferCandidate {
+  id: string;
+  edge_id: string;
+  source_service: string;
+  destination_service: string;
+  evidence_status: GraphEdge["evidence_status"];
+  evidence_event_ids: string[];
+  classification?: string;
+  purpose?: string;
+  policy_id: string;
+}
+
 export interface AnalyzeResponse {
   summary: { status: AnalysisStatus; events_processed: number };
   graph: Graph;
   findings: Finding[];
+  transfer_candidates?: TransferCandidate[];
 }
 
 export type AnalyzeRequest =
@@ -96,11 +109,8 @@ export interface TraceGuardClient {
 }
 
 export interface PrivacyDecisionRequest {
-  source_service: string;
-  destination_service: string;
-  data_categories: string[];
-  purpose: string;
-  policy_id: string;
+  scenario_id: string;
+  candidate_id: string;
 }
 
 export interface PrivacyDecisionResponse {
