@@ -1,13 +1,38 @@
+/* Mirror the dashboard palette so the static deck also works offline. */
 :root {
-  color-scheme: dark;
-  --ink: #0b1917;
-  --panel: #112421;
-  --line: #35504a;
-  --pale: #f1f6ee;
-  --mint: #9df8c3;
-  --muted: #b1c5bd;
-  --gold: #f7cb84;
-  --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  color-scheme: light;
+  --page: #f5f3f8;
+  --panel: #fff;
+  --ink: #282330;
+  --muted: #625b6d;
+  --border: #ded9e7;
+  --accent: #634889;
+  --soft: #f0eaf7;
+  --nav: #1d1826;
+  --lavender: #c0b5dd;
+  --danger: #922c2e;
+  --danger-bg: #fff4f1;
+  --focus: #9968d5;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --link-ink: #674594;
+  --section-shadow: 0 2px 5px #32223f09, 0 12px 28px -24px #28133350;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #19151e;
+    --panel: #241f2d;
+    --ink: #f2edf8;
+    --muted: #c4bbd0;
+    --border: #463d51;
+    --accent: #cfb9ec;
+    --soft: #392d46;
+    --nav: #120f18;
+    --danger: #ffaaa0;
+    --danger-bg: #382628;
+    --link-ink: #c8a6f2;
+    --section-shadow: 0 2px 8px #0002;
+  }
 }
 * {
   box-sizing: border-box;
@@ -18,8 +43,8 @@ body {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  background: var(--ink);
-  color: var(--pale);
+  background: var(--page);
+  color: var(--ink);
   font:
     18px/1.55 "Thonburi",
     "Leelawadee UI",
@@ -36,7 +61,7 @@ button {
 }
 button:focus-visible,
 a:focus-visible {
-  outline: 3px solid var(--gold);
+  outline: 3px solid var(--focus);
   outline-offset: 4px;
 }
 header,
@@ -47,7 +72,9 @@ footer {
   gap: 30px;
 }
 header {
-  border-bottom: 1px solid var(--line);
+  background: var(--nav);
+  color: #fff;
+  border-bottom: 1px solid var(--border);
 }
 .brand,
 .hdr-demo,
@@ -64,33 +91,32 @@ nav a,
   letter-spacing: -1.3px;
 }
 .brand b,
-.dot,
+.event span {
+  color: var(--lavender);
+}
 em {
-  color: var(--mint);
+  color: var(--accent);
 }
 .mark {
   display: grid;
   place-items: center;
-  background: var(--mint);
-  color: var(--ink);
+  background: var(--lavender);
+  color: var(--nav);
   width: 30px;
   height: 32px;
   clip-path: polygon(50% 0, 97% 20%, 90% 72%, 50% 100%, 10% 72%, 3% 20%);
 }
-.event,
 .hint,
 small {
   color: var(--muted);
 }
 .event {
+  color: #e3dbe9;
   font: 12px var(--mono);
   margin-left: auto;
 }
-.event span {
-  color: var(--mint);
-}
 .hdr-demo {
-  border: 1px solid var(--line);
+  border: 1px solid #776a88;
   padding: 7px 16px;
   border-radius: 6px;
   font-weight: 650;
@@ -147,7 +173,7 @@ em {
 .lead {
   max-width: 46ch;
   margin: 22px 0 28px;
-  color: #d0dfd8;
+  color: var(--muted);
   font-size: clamp(18px, 1.45vw, 26px);
   line-height: 1.65;
 }
@@ -157,32 +183,32 @@ em {
 }
 .hint a {
   display: inline-block;
-  color: var(--mint);
+  color: var(--accent);
 }
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 24px;
-  background: var(--mint);
-  color: var(--ink);
+  background: var(--accent);
+  color: var(--panel);
   border-radius: 6px;
   padding: 12px 22px;
   font-weight: 750;
 }
 .btn:hover {
-  background: #c4ffdd;
+  background: var(--link-ink);
 }
 .terminal,
 .preview,
 .route div,
 .tests > div {
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 12px;
 }
 .terminal {
   overflow: hidden;
-  box-shadow: 8px 8px 0 #132d26;
+  box-shadow: var(--section-shadow);
 }
 figcaption,
 .terminal-foot {
@@ -192,7 +218,7 @@ figcaption,
   padding: 15px 22px;
 }
 figcaption {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   font: bold 18px var(--mono);
 }
 figcaption small,
@@ -203,13 +229,13 @@ figcaption small,
 .dot {
   width: 9px;
   height: 9px;
-  background: var(--mint);
+  background: var(--accent);
   border-radius: 50%;
 }
 .log {
   margin: 0 22px;
   padding: 15px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   display: grid;
   gap: 1px 8px;
   grid-template-columns: 1fr auto;
@@ -221,7 +247,7 @@ figcaption small,
   color: var(--muted);
 }
 .log code {
-  color: var(--mint);
+  color: var(--accent);
 }
 .log strong,
 .log samp {
@@ -256,21 +282,22 @@ figcaption small,
   font: 650 clamp(19px, 2.1vw, 36px) / 1.5 var(--mono);
 }
 .route > span {
-  color: var(--mint);
+  color: var(--accent);
   font-size: 26px;
 }
 .route .flag {
-  border-color: var(--gold);
-  color: var(--gold);
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
 }
 .finding {
-  background: #172e27;
-  border-left: 4px solid var(--mint);
+  background: var(--danger-bg);
+  border-left: 4px solid var(--danger);
   padding: 18px 24px;
   margin: 0 0 24px;
 }
 .finding code {
-  color: var(--mint);
+  color: var(--accent);
 }
 .finding p {
   color: var(--muted);
@@ -305,30 +332,32 @@ dialog img {
 dialog button,
 .controls button {
   background: transparent;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 5px;
   padding: 5px 12px;
 }
 .switch [aria-pressed="true"] {
-  background: var(--mint);
-  color: var(--ink);
+  background: var(--soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .paper {
-  background: #f1f4e9;
-  color: #172a23;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--ink);
   padding: clamp(18px, 3vw, 44px);
   border-radius: 4px;
-  box-shadow: 8px 8px 0 #355047;
+  box-shadow: var(--section-shadow);
 }
 .paper small {
-  color: #3a6552;
+  color: var(--muted);
 }
 .paper h3 {
   font-size: clamp(23px, 2.3vw, 39px);
   padding: 12px 0;
 }
 .paper dt {
-  border-top: 1px solid #b7c9bc;
+  border-top: 1px solid var(--border);
   margin-top: 10px;
   padding-top: 9px;
   font-weight: 750;
@@ -341,24 +370,24 @@ dialog button,
 }
 .tests span {
   display: block;
-  color: var(--mint);
+  color: var(--accent);
 }
 .tests > div:first-child span {
-  color: var(--gold);
+  color: var(--danger);
 }
 .qa {
   flex-wrap: wrap;
 }
 .qa a {
-  border-bottom: 1px solid var(--line);
-  color: var(--mint);
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
 }
 dialog {
   background: var(--panel);
-  color: var(--pale);
+  color: var(--ink);
   width: min(1100px, 94vw);
   max-height: 94vh;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px;
 }
@@ -377,8 +406,9 @@ dialog img {
   object-fit: contain;
 }
 footer {
+  background: var(--panel);
   justify-content: space-between;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--border);
 }
 nav {
   display: flex;
@@ -392,8 +422,8 @@ nav a {
   padding: 4px 0;
 }
 nav [aria-current="step"] {
-  color: var(--mint);
-  border-color: var(--mint);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 .controls {
   display: flex;

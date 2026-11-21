@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1917" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1d1826" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#120f18" />
     <title>TraceGuard AI · จากหลักฐานสู่การป้องกัน</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="./presentation.js" defer></script>
@@ -100,7 +101,10 @@
               rel="noopener noreferrer"
               >เปิดระบบสาธิต ↗</a
             >
-            <p class="hint">เปิดในแท็บใหม่ · กลับแท็บนี้เพื่อดูร่างรายงาน</p>
+            <p class="hint">
+              ในระบบสาธิต กด “อธิบายประเด็นที่พบ”
+              แล้วกลับมาดูว่า AI ช่วยอย่างไร
+            </p>
           </div>
           <div class="preview">
             <button id="preview" aria-label="ขยายภาพจากการซ้อม">
@@ -118,6 +122,39 @@
               </button>
             </div>
           </div>
+        </div>
+      </section>
+      <section id="ai" hidden aria-labelledby="ai-title">
+        <div class="split">
+          <div>
+            <h2 id="ai-title">
+              AI ช่วย<br /><em>เลือกว่าจะตรวจอะไรก่อน</em>
+            </h2>
+            <p class="lead">
+              ระบบตรวจกฎของบริษัทกับบันทึกก่อน เมื่อเรากด “อธิบายประเด็นที่พบ”
+              AI ของ OpenAI จะช่วยเรียงขั้นตอนที่เหมาะกับหลักฐาน
+              โดยใช้รหัสอ้างอิงแทนข้อมูลลูกค้า
+            </p>
+            <p class="hint">
+              ระบบตรวจคำแนะนำกับหลักฐานอีกครั้ง ถ้าอ้างผิดรายการ
+              หรือเชื่อมต่อไม่ได้ ระบบจะแสดงขั้นตอนที่กำหนดไว้ตามกฎ
+            </p>
+          </div>
+          <article class="paper">
+            <small>ตัวอย่างจากข้อมูลจำลอง</small>
+            <h3>หลักฐานต่างกัน งานถัดไปก็ต่างกัน</h3>
+            <dl>
+              <dt>บันทึกยืนยันว่าฝ่ายขายส่งสำเร็จ</dt>
+              <dd>
+                ตรวจปลายทางในรายการที่สาม
+                แล้วเทียบกับรายชื่อระบบที่บริษัทอนุญาตให้ส่งข้อมูลไป
+              </dd>
+              <dt>พบเพียงบันทึกว่าระบบภายนอกได้รับข้อมูล</dt>
+              <dd>
+                ขอบันทึกฝั่งส่งของการส่งครั้งเดียวกัน ก่อนสรุปว่าใครเป็นผู้ส่ง
+              </dd>
+            </dl>
+          </article>
         </div>
       </section>
       <section id="report" hidden aria-labelledby="report-title">
@@ -194,6 +231,7 @@
         </div>
         <div class="qa">
           <b>ถามตอบ</b> <a href="#evidence">ดูหลักฐาน</a
+          ><a href="#ai">ดูบทบาท AI</a
           ><a href="#report">ดูร่างรายงาน</a
           ><a
             href="https://traceguard-ai-ui.vercel.app/"
@@ -207,12 +245,12 @@
     <footer>
       <nav aria-label="ลำดับการนำเสนอ">
         <a href="#start">คำถาม</a><a href="#evidence">หลักฐาน</a
-        ><a href="#demo">สาธิต</a><a href="#report">รายงาน</a
-        ><a href="#prevention">ป้องกันเหตุซ้ำ</a>
+        ><a href="#demo">สาธิต</a><a href="#ai">AI</a
+        ><a href="#report">รายงาน</a><a href="#prevention">ป้องกันเหตุซ้ำ</a>
       </nav>
       <div class="controls">
         <button id="back" aria-label="หน้าก่อน">←</button
-        ><output id="count" aria-live="polite">1 / 5</output
+        ><output id="count" aria-live="polite">1 / 6</output
         ><button id="forward" aria-label="หน้าถัดไป">→</button>
       </div>
     </footer>
