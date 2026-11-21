@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { TransferTestPanel } from '../features/enforcement/TransferTestPanel';
 import { InvestigationPanel, statusLabels } from '../features/investigation/InvestigationPanel';
 import { LineageGraph } from '../features/lineage/LineageGraph';
 import { NodeDetails } from '../features/lineage/NodeDetails';
@@ -123,6 +124,8 @@ export default function App({ client = api }: { client?: typeof api } = {}) {
         <h1>TraceGuard AI</h1>
         <p>Synthetic audit data · API mode</p>
       </header>
+
+      <TransferTestPanel decide={client.decidePrivacy} />
 
       <section className="scenario-controls" aria-label="Scenario controls">
         <label htmlFor="scenario">Scenario</label>

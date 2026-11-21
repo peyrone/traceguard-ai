@@ -1,6 +1,6 @@
 import { createExplainRequest, evidenceIdsForRequest } from "./explanation.ts";
-import { isAnalyzeResponse, isErrorResponse, isExplainResponse, isScenarioList } from "./response.ts";
-import type { Finding, TraceGuardClient } from "./types.ts";
+import { isAnalyzeResponse, isErrorResponse, isExplainResponse, isPrivacyDecisionResponse, isScenarioList } from "./response.ts";
+import type { Finding, PrivacyDecisionRequest, PrivacyDecisionResponse, TraceGuardClient } from "./types.ts";
 
 export type { AnalysisStatus as Status, AnalyzeResponse as Analysis, ExplainResponse as Explanation, Finding, Scenario } from "./types.ts";
 
@@ -40,7 +40,7 @@ interface ClientOptions {
 export function createTraceGuardClient({
   baseUrl = "",
   fetch: fetchRequest = globalThis.fetch.bind(globalThis),
-}: ClientOptions = {}): TraceGuardClient {
+}: ClientOptions = {}): TraceGuardClient & { decidePrivacy(input: PrivacyDecisionRequest, signal?: AbortSignal): Promise<PrivacyDecisionResponse> } {
   const prefix = versionedBaseURL(baseUrl);
 
   async function request<T>(
@@ -70,6 +70,7 @@ export function createTraceGuardClient({
   return {
     listScenarios: (signal) => request("/scenarios", isScenarioList, signal),
     analyze: (input, signal) => request("/analyze", isAnalyzeResponse, signal, input),
+    decidePrivacy: (input, signal) => request("/privacy/decisions", isPrivacyDecisionResponse, signal, input),
     async explain(input, signal) {
       const deadline = AbortSignal.timeout(explanationDeadlineMs);
       const requestSignal = signal ? AbortSignal.any([signal, deadline]) : deadline;
@@ -92,6 +93,7 @@ export function createApiClient(baseURL = configuredBaseURL) {
   const client = createTraceGuardClient({ baseUrl: baseURL.trim() || localBaseURL });
   return {
     listScenarios: client.listScenarios,
+    decidePrivacy: client.decidePrivacy,
     analyze: (scenarioID: string, signal: AbortSignal) =>
       client.analyze({ scenario_id: scenarioID }, signal),
     explain: (finding: Finding, signal: AbortSignal) =>

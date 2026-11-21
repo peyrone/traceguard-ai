@@ -10,6 +10,8 @@
 | POST | `/api/v1/analyze` | From events + policy to graph and findings | BE1 integrates BE2 |
 | POST | `/api/v1/explain` | Explain selected finding from supplied safe evidence | BE2 |
 
+| POST | `/api/v1/privacy/decisions` | Evaluate a demo policy and conditionally execute a synthetic transfer | BE1 integrates enforcement and FE2 |
+
 No `analysis_id` needed for MVP; explanation is stateless.
 
 ## `POST /api/v1/analyze`
@@ -59,6 +61,35 @@ Input: selected finding, rule summary, redacted synthetic evidence summaries. Do
 Output: `{ "explanation": "...", "next_steps": ["..."], "evidence_event_ids": ["evt-003"], "mode": "ai" }` where `mode` is `ai` or `fallback`.
 
 If OpenAI API is unavailable, serve a deterministic explanation referencing the same evidence IDs. Preserve timeouts.
+
+## `POST /api/v1/privacy/decisions`
+
+The operation evaluates a server-owned demo policy and invokes the synthetic executor only on `ALLOW`. It sends no customer data and makes no external transfer. Its result records a simulated attempt and supplies no historical lineage evidence.
+
+Request:
+
+```json
+{
+  "source_service": "sales-api",
+  "destination_service": "external-crm",
+  "data_categories": ["PII"],
+  "purpose": "CUSTOMER_SERVICE",
+  "policy_id": "policy-001"
+}
+```
+
+Response for the example:
+
+```json
+{
+  "decision": "DENY",
+  "rule_id": "DENY_EXTERNAL_PII",
+  "reason": "Destination is not permitted by the privacy policy.",
+  "transfer_executed": false
+}
+```
+
+A valid JSON request returns HTTP 200 with `ALLOW`, `DENY`, or `INDETERMINATE`. Missing decision attributes, uncovered categories, or unavailable policy return `INDETERMINATE` and block the simulation. `transfer_executed` is true only after the synthetic executor produces a receipt. Malformed or incorrectly typed requests return HTTP 400 with the standard error envelope.
 
 ## Frontend component contracts
 
