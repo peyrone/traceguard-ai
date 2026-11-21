@@ -116,6 +116,8 @@ func (s Service) explain(ctx context.Context, finding entities.Finding, supplied
 	}
 	result := Result{Status: finding.Status, Explanation: explanation, NextSteps: renderSteps(fallbackSteps), EvidenceEventIDs: citations, Mode: "fallback", Review: review}
 	if s.provider == nil || ctx.Err() != nil || !knownStatus(finding.Status) {
+	result := Result{Status: finding.Status, Explanation: explanation, NextSteps: renderSteps(fallbackSteps), EvidenceEventIDs: citations, Mode: "fallback"}
+	if len(citations) == 0 || s.provider == nil || ctx.Err() != nil || !knownStatus(finding.Status) {
 		return result, nil
 	}
 	if len(review.Insights) > 0 || len(review.Mappings) > 0 {

@@ -55,3 +55,25 @@ func TestExplain(t *testing.T) {
 		})
 	}
 }
+
+func TestExplainWithoutEvidenceUsesFallback(t *testing.T) {
+	// No cited ID resolves to supplied evidence, so the AI has nothing grounded to work with.
+	finding := entities.Finding{Status: entities.Inconclusive, EvidenceEventIDs: []string{"absent"}}
+	called := false
+	service := New(providerFunc(func(context.Context, Request) (Suggestion, error) {
+		called = true
+		// A suggestion that would otherwise pass every check: same status, matching (empty) refs, vetted step.
+		return Suggestion{entities.Inconclusive, []string{}, []string{"collect_records"}}, nil
+	}))
+
+	got, err := service.Explain(t.Context(), finding, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if called {
+		t.Fatal("provider must not be called when no evidence resolves")
+	}
+	if got.Mode != "fallback" || len(got.EvidenceEventIDs) != 0 {
+		t.Fatalf("explanation = %+v", got)
+	}
+}
