@@ -28,6 +28,9 @@ func Router(settings config.Config) *echo.Echo {
 	graph := lineage.Service{NodeKinds: map[string]string{
 		"customer-api": "internal",
 		"sales-api":    "internal",
+		"consent-api":  "internal",
+		"case-router":  "internal",
+		"case-store":   "internal",
 		"external-crm": "external",
 	}}
 	var provider investigation.Provider

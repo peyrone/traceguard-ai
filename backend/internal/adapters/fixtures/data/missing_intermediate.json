@@ -16,6 +16,36 @@
       "purpose": "CUSTOMER_SERVICE"
     },
     {
+      "event_id": "evt-006",
+      "trace_id": "trace-001",
+      "transfer_id": "xfer-006",
+      "occurred_at": "2026-11-21T03:10:02Z",
+      "observed_at": "2026-11-21T03:10:12Z",
+      "service": "sales-api",
+      "action": "DATA_SENT",
+      "outcome": "COMPLETED",
+      "source_service": "sales-api",
+      "destination_service": "case-router",
+      "data_ref": "synthetic-case-001",
+      "classification": "PII",
+      "purpose": "CUSTOMER_SERVICE"
+    },
+    {
+      "event_id": "evt-007",
+      "trace_id": "trace-001",
+      "transfer_id": "xfer-007",
+      "occurred_at": "2026-11-21T03:10:03Z",
+      "observed_at": "2026-11-21T03:10:13Z",
+      "service": "case-router",
+      "action": "DATA_SENT",
+      "outcome": "COMPLETED",
+      "source_service": "case-router",
+      "destination_service": "case-store",
+      "data_ref": "synthetic-case-001",
+      "classification": "PII",
+      "purpose": "CUSTOMER_SERVICE"
+    },
+    {
       "event_id": "evt-004",
       "trace_id": "trace-001",
       "transfer_id": "xfer-004",
@@ -36,7 +66,9 @@
     "classification": "PII",
     "allowed_destinations": [
       "sales-api",
-      "customer-api"
+      "customer-api",
+      "case-router",
+      "case-store"
     ],
     "allowed_purposes": [
       "CUSTOMER_SERVICE"

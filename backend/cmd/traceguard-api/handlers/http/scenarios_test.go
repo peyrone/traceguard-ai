@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -44,18 +45,21 @@ func TestScenarioPipeline(t *testing.T) {
 	analyze := func(id string) api.AnalyzeResponse {
 		return post(`{"scenario_id":"` + id + `"}`)
 	}
-	if allowed := analyze("allowed_transfer"); allowed.Summary.Status != api.Status(entities.NoViolationObserved) {
+	if allowed := analyze("allowed_transfer"); allowed.Summary.Status != api.Status(entities.NoViolationObserved) ||
+		len(allowed.Graph.Nodes) != 5 || len(allowed.Graph.Edges) != 4 {
 		t.Fatalf("unexpected allowed result: %+v", allowed)
 	}
 	direct := analyze("unauthorized_transfer")
-	if direct.Summary.Status != api.Status(entities.VerifiedViolation) || direct.Summary.EventsProcessed != 3 {
+	if direct.Summary.Status != api.Status(entities.VerifiedViolation) || direct.Summary.EventsProcessed != 6 ||
+		len(direct.Graph.Nodes) != 6 || len(direct.Graph.Edges) != 5 {
 		t.Fatalf("unexpected direct transfer result: %+v", direct)
 	}
 	if shuffled := analyze("shuffled_transfer"); !reflect.DeepEqual(shuffled, direct) {
 		t.Fatalf("shuffled response differs: %+v", shuffled)
 	}
 	missing := analyze("missing_intermediate")
-	if missing.Summary.Status != api.Status(entities.PotentialViolation) || len(missing.Graph.Edges) != 2 {
+	if missing.Summary.Status != api.Status(entities.PotentialViolation) || len(missing.Graph.Nodes) != 5 ||
+		len(missing.Graph.Edges) != 4 {
 		t.Fatalf("unexpected missing result: %+v", missing)
 	}
 	found := false
@@ -66,7 +70,8 @@ func TestScenarioPipeline(t *testing.T) {
 			t.Fatalf("unexpected missing edge: %+v", edge)
 		}
 	}
-	if !found || len(missing.Findings) != 1 || missing.Findings[0].Status != api.Status(entities.PotentialViolation) || len(missing.Findings[0].MissingEvidence) == 0 {
+	if !found || len(missing.Findings) != 1 || missing.Findings[0].Status != api.Status(entities.PotentialViolation) ||
+		!reflect.DeepEqual(missing.Findings[0].EvidenceEventIds, []string{"evt-004"}) || len(missing.Findings[0].MissingEvidence) == 0 {
 		t.Fatalf("missing inferred evidence or finding: %+v", missing)
 	}
 
@@ -80,8 +85,8 @@ func TestScenarioPipeline(t *testing.T) {
 		if outboundEvidence != "" {
 			count++
 		}
-		if got.Summary.Status != api.Status(overall) || got.Summary.EventsProcessed != count ||
-			len(got.Graph.Edges) != count || len(got.Findings) != count {
+		if got.Summary.Status != api.Status(overall) || got.Summary.EventsProcessed != count+2 ||
+			len(got.Graph.Nodes) != count+3 || len(got.Graph.Edges) != count+2 || len(got.Findings) != count {
 			t.Fatalf("unexpected summary, edges, or findings: %+v", got)
 		}
 		for i, want := range []struct {
@@ -93,7 +98,13 @@ func TestScenarioPipeline(t *testing.T) {
 			{"customer-api", "sales-api", "evt-e-001", entities.Inferred, entities.Inconclusive, "TRANSFER_POLICY"},
 			{"sales-api", "external-crm", "evt-e-002", outboundEvidence, outboundStatus, "DENY_EXTERNAL_PII"},
 		}[:count] {
-			edge, finding := got.Graph.Edges[i], got.Findings[i]
+			edgeIndex := slices.IndexFunc(got.Graph.Edges, func(edge api.Edge) bool {
+				return edge.Source == want.source && edge.Target == want.target
+			})
+			if edgeIndex < 0 {
+				t.Fatalf("missing edge %s -> %s", want.source, want.target)
+			}
+			edge, finding := got.Graph.Edges[edgeIndex], got.Findings[i]
 			ids := []string{want.eventID}
 			gaps := []string{"observed completed send with matching endpoints"}
 			if want.status == entities.VerifiedViolation {
@@ -113,7 +124,7 @@ func TestScenarioPipeline(t *testing.T) {
 	check(partial, entities.VerifiedViolation, entities.Observed, entities.VerifiedViolation)
 
 	events, policy, err := (fixtures.Store{}).Load(context.Background(), id)
-	if err != nil || len(events) != 2 {
+	if err != nil || len(events) != 4 {
 		t.Fatalf("load scenario: %v, events: %d", err, len(events))
 	}
 	analyzeEvents := func(events ...entities.Event) api.AnalyzeResponse {
@@ -127,13 +138,24 @@ func TestScenarioPipeline(t *testing.T) {
 		}
 		return post(string(body))
 	}
-	if shuffled := analyzeEvents(events[1], events[0]); !reflect.DeepEqual(shuffled, partial) {
+	shuffledEvents := slices.Clone(events)
+	slices.Reverse(shuffledEvents)
+	if shuffled := analyzeEvents(shuffledEvents...); !reflect.DeepEqual(shuffled, partial) {
 		t.Fatalf("shuffled partial evidence response differs: %+v", shuffled)
 	}
-	check(analyzeEvents(events[0]), entities.Inconclusive, "", "")
+	withoutOutbound := slices.DeleteFunc(slices.Clone(events), func(event entities.Event) bool {
+		return event.EventID == "evt-e-002"
+	})
+	check(analyzeEvents(withoutOutbound...), entities.Inconclusive, "", "")
 	for _, outcome := range []string{"ATTEMPTED", "FAILED"} {
-		outbound := events[1]
-		outbound.Outcome = outcome
-		check(analyzeEvents(events[0], outbound), entities.PotentialViolation, entities.Inferred, entities.PotentialViolation)
+		modified := slices.Clone(events)
+		outboundIndex := slices.IndexFunc(modified, func(event entities.Event) bool {
+			return event.EventID == "evt-e-002"
+		})
+		if outboundIndex < 0 {
+			t.Fatal("fixture missing evt-e-002")
+		}
+		modified[outboundIndex].Outcome = outcome
+		check(analyzeEvents(modified...), entities.PotentialViolation, entities.Inferred, entities.PotentialViolation)
 	}
 }
