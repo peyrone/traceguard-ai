@@ -48,6 +48,8 @@ Response:
 }
 ```
 
+Fixture-backed analysis with the server-owned policy also returns `transfer_candidates`. Each entry has a scenario-scoped `id`, `edge_id`, directed `source_service` and `destination_service`, `evidence_status`, `evidence_event_ids`, and `policy_id`. Observed entries correspond to individual completed send records and include their `classification` and `purpose` when present. Inferred entries expose the graph relationship and its supporting IDs without inferring a classification or purpose for a completed send. The field is omitted for custom events or policy overrides.
+
 Rules:
 - `OBSERVED` means a completed transfer is directly logged with event IDs; `INFERRED` means the relationship is hypothetical and must not be treated as confirmed.
 - A completed directly observed transfer to a denied destination may be **verified**, even when an upstream link is missing.
@@ -66,7 +68,9 @@ If OpenAI API is unavailable, serve a deterministic explanation referencing the 
 
 The operation evaluates a server-owned demo policy and invokes the synthetic executor only on `ALLOW`. It sends no customer data and makes no external transfer. Its result records a simulated attempt and supplies no historical lineage evidence.
 
-Request:
+For the dashboard, send only `scenario_id` and the selected `candidate_id` from that scenario's analysis. The server reloads the scenario, re-resolves the candidate, and evaluates the scenario's own policy. Inferred transfers and observed transfers with insufficient decision attributes return `INDETERMINATE` with `transfer_executed=false`. Unknown scenarios and unknown or foreign candidates return HTTP 404 with the standard error envelope. An incomplete pair of references or a mixture of references and explicit transfer attributes returns HTTP 400.
+
+The legacy explicit-attribute request remains available for existing callers:
 
 ```json
 {
