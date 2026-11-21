@@ -24,7 +24,8 @@ type dataKey struct {
 }
 
 func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities.Graph) {
-	events := normalize(input)
+	events, conflicts := normalize(input)
+	graph := entities.Graph{Nodes: []entities.Node{}, Edges: []entities.Edge{}, ConflictingEventIDs: conflicts}
 	nodes := make(map[string]entities.Node)
 	evidence := make(map[edgeKey][]string)
 	byTransfer := make(map[string][]entities.Event)
@@ -32,7 +33,7 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 
 	for _, event := range events {
 		for _, id := range []string{event.Service, event.SourceService, event.DestinationService} {
-			if id != "" {
+			if entities.Meaningful(id) {
 				kind := s.NodeKinds[id]
 				if kind == "" {
 					kind = "unknown"
@@ -40,7 +41,7 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 				nodes[id] = entities.Node{ID: id, Label: id, Kind: kind}
 			}
 		}
-		if event.TransferID != "" && event.Action == "DATA_SENT" && event.Outcome == "COMPLETED" && event.SourceService != "" {
+		if entities.Meaningful(event.TransferID) && event.Action == "DATA_SENT" && event.Outcome == "COMPLETED" && entities.Meaningful(event.SourceService) {
 			byTransfer[event.TransferID] = append(byTransfer[event.TransferID], event)
 		}
 		if !completedSend(event) {
@@ -48,7 +49,7 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 		}
 		key := edgeKey{event.SourceService, event.DestinationService, entities.Observed}
 		evidence[key] = append(evidence[key], event.EventID)
-		if event.TraceID != "" && event.DataRef != "" {
+		if entities.Meaningful(event.TraceID) && entities.Meaningful(event.DataRef) {
 			key := dataKey{event.TraceID, event.DataRef}
 			byData[key] = append(byData[key], event)
 		}
@@ -58,7 +59,7 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 		source, target := event.SourceService, event.DestinationService
 		switch event.Action {
 		case "DATA_SENT":
-			if !completedSend(event) && source != "" && target != "" {
+			if !completedSend(event) && entities.Meaningful(source) && entities.Meaningful(target) {
 				key := edgeKey{source, target, entities.Inferred}
 				evidence[key] = append(evidence[key], event.EventID)
 			}
@@ -66,13 +67,17 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 			if event.Outcome != "COMPLETED" {
 				continue
 			}
-			if target == "" {
+			if !entities.Meaningful(target) {
 				target = event.Service
 			}
-			if target == "" || corroborated(event, target, byTransfer[event.TransferID]) {
+			if !entities.Meaningful(target) {
 				continue
 			}
-			if source != "" {
+			if corroborated(event, target, byTransfer[event.TransferID]) {
+				graph.CorroboratedReceiptIDs = append(graph.CorroboratedReceiptIDs, event.EventID)
+				continue
+			}
+			if entities.Meaningful(source) {
 				key := edgeKey{source, target, entities.Inferred}
 				evidence[key] = append(evidence[key], event.EventID)
 				continue
@@ -83,6 +88,10 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 			}
 			if source == "" {
 				source, ids = precedingDestination(event, target, byData[dataKey{event.TraceID, event.DataRef}])
+			} else {
+				graph.InferredTransfers = append(graph.InferredTransfers, entities.InferredTransfer{
+					Source: source, Target: target, ReceiptID: event.EventID, SendEventIDs: ids,
+				})
 			}
 			if source != "" {
 				key := edgeKey{source, target, entities.Inferred}
@@ -92,7 +101,6 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 		}
 	}
 
-	graph := entities.Graph{Nodes: []entities.Node{}, Edges: []entities.Edge{}}
 	for _, node := range nodes {
 		graph.Nodes = append(graph.Nodes, node)
 	}
@@ -117,32 +125,47 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 
 func completedSend(event entities.Event) bool {
 	return event.Action == "DATA_SENT" && event.Outcome == "COMPLETED" &&
-		event.SourceService != "" && event.DestinationService != ""
+		entities.Meaningful(event.SourceService) && entities.Meaningful(event.DestinationService)
 }
 
 func corroborated(receive entities.Event, target string, sends []entities.Event) bool {
+	var source string
 	for _, send := range sends {
-		if completedSend(send) && send.DestinationService == target &&
-			compatible(receive.SourceService, send.SourceService) &&
-			compatible(receive.TraceID, send.TraceID) &&
-			compatible(receive.DataRef, send.DataRef) {
-			return true
+		if !completedSend(send) || send.DestinationService != target ||
+			send.OccurredAt.After(receive.OccurredAt) || !compatible(receive.SourceService, send.SourceService) ||
+			!compatible(receive.TraceID, send.TraceID) || !compatible(receive.DataRef, send.DataRef) {
+			continue
 		}
+		// Keep receipts that conflict with the send or add policy facts the send lacks.
+		if (receive.Classification != "" && receive.Classification != send.Classification) ||
+			(receive.Purpose != "" && receive.Purpose != send.Purpose) ||
+			(source != "" && source != send.SourceService) {
+			return false
+		}
+		source = send.SourceService
 	}
-	return false
+	return source != ""
 }
 
 // partialSendSource resolves complementary endpoints without presenting them
 // as a directly logged transfer.
 func partialSendSource(receive entities.Event, target string, sends []entities.Event) (source string, ids []string, ambiguous bool) {
+	classification, purpose := receive.Classification, receive.Purpose
 	for _, send := range sends {
-		if send.DestinationService != "" || send.SourceService == target ||
+		if entities.Meaningful(send.DestinationService) || send.SourceService == target ||
 			send.OccurredAt.After(receive.OccurredAt) ||
 			!compatible(receive.TraceID, send.TraceID) || !compatible(receive.DataRef, send.DataRef) {
 			continue
 		}
-		if source != "" && source != send.SourceService {
+		if (source != "" && source != send.SourceService) ||
+			!compatible(classification, send.Classification) || !compatible(purpose, send.Purpose) {
 			return "", nil, true
+		}
+		if classification == "" {
+			classification = send.Classification
+		}
+		if purpose == "" {
+			purpose = send.Purpose
 		}
 		source = send.SourceService
 		ids = append(ids, send.EventID)
@@ -151,7 +174,7 @@ func partialSendSource(receive entities.Event, target string, sends []entities.E
 }
 
 func compatible(a, b string) bool {
-	return a == "" || b == "" || a == b
+	return !entities.Meaningful(a) || !entities.Meaningful(b) || a == b
 }
 
 func precedingDestination(receive entities.Event, target string, sends []entities.Event) (string, []string) {
@@ -176,11 +199,11 @@ func edgeID(key edgeKey) string {
 	return "edge-" + string(key.status) + "-" + base64.RawURLEncoding.EncodeToString([]byte(pair))
 }
 
-func normalize(input []entities.Event) []entities.Event {
+func normalize(input []entities.Event) ([]entities.Event, []string) {
 	byID := make(map[string]entities.Event, len(input))
 	conflicts := make(map[string]bool)
 	for _, event := range input {
-		if event.EventID == "" || conflicts[event.EventID] {
+		if !entities.Meaningful(event.EventID) || conflicts[event.EventID] {
 			continue
 		}
 		event.OccurredAt = event.OccurredAt.UTC()
@@ -207,5 +230,10 @@ func normalize(input []entities.Event) []entities.Event {
 	slices.SortFunc(events, func(a, b entities.Event) int {
 		return cmp.Or(a.OccurredAt.Compare(b.OccurredAt), cmp.Compare(a.EventID, b.EventID))
 	})
-	return events
+	var conflictIDs []string
+	for id := range conflicts {
+		conflictIDs = append(conflictIDs, id)
+	}
+	slices.Sort(conflictIDs)
+	return events, conflictIDs
 }

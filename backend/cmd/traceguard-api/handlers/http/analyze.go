@@ -47,7 +47,7 @@ func (s *server) Analyze(c echo.Context) error {
 	var events []entities.Event
 	var policy entities.Policy
 	if request.ScenarioId != nil {
-		if *request.ScenarioId == "" || (request.Events != nil && len(*request.Events) > 0) {
+		if !entities.Meaningful(*request.ScenarioId) || (request.Events != nil && len(*request.Events) > 0) {
 			return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Supply a scenario ID or explicit events and policy.")
 		}
 		if s.fixtures == nil {
@@ -65,8 +65,11 @@ func (s *server) Analyze(c echo.Context) error {
 		return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Supply a scenario ID or explicit events and policy.")
 	} else {
 		for _, event := range *request.Events {
-			if event.EventId == "" || event.Service == "" || event.Action == "" || event.OccurredAt.IsZero() || event.ObservedAt.IsZero() || !validOutcome(string(event.Outcome)) {
+			if !entities.Meaningful(event.EventId) || !entities.Meaningful(event.Service) || !entities.Meaningful(event.Action) || event.OccurredAt.IsZero() || event.ObservedAt.IsZero() || !validOutcome(string(event.Outcome)) {
 				return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Each event must have an ID, service, action, valid outcome, and both timestamps.")
+			}
+			if blankEndpoint(event.SourceService) || blankEndpoint(event.DestinationService) {
+				return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Supplied transfer endpoints must be nonblank.")
 			}
 			events = append(events, entities.Event{
 				EventID: event.EventId, TraceID: optional(event.TraceId), TransferID: optional(event.TransferId),
@@ -78,7 +81,7 @@ func (s *server) Analyze(c echo.Context) error {
 		}
 	}
 	if p := request.Policy; p != nil {
-		if p.PolicyId == "" || p.Classification == "" || p.AllowedDestinations == nil || p.AllowedPurposes == nil {
+		if !entities.Meaningful(p.PolicyId) || !entities.Meaningful(p.Classification) || p.AllowedDestinations == nil || p.AllowedPurposes == nil {
 			return fail(c, http.StatusBadRequest, "INVALID_REQUEST", "Policy requires an ID, classification, allowed destinations, and allowed purposes.")
 		}
 		policy = entities.Policy{PolicyID: p.PolicyId, Classification: p.Classification, AllowedDestinations: p.AllowedDestinations, AllowedPurposes: p.AllowedPurposes}
@@ -126,6 +129,10 @@ func response(count int, graph entities.Graph, findings []entities.Finding) api.
 		})
 	}
 	return result
+}
+
+func blankEndpoint(value *string) bool {
+	return value != nil && !entities.Meaningful(*value)
 }
 
 func optional(value *string) string {
