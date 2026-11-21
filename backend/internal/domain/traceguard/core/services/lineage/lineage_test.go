@@ -23,6 +23,11 @@ func TestReconstruct(t *testing.T) {
 	direct.OccurredAt, direct.ObservedAt = start.Add(time.Minute), start.Add(time.Minute)
 	receive := direct
 	receive.EventID, receive.Action, receive.SourceService, receive.Service = "receive", "DATA_RECEIVED", "", "external-crm"
+	partial := direct
+	partial.EventID, partial.DestinationService = "partial", ""
+	partial.OccurredAt = direct.OccurredAt.Add(-time.Second)
+	ambiguous := partial
+	ambiguous.EventID, ambiguous.SourceService = "ambiguous", "other-api"
 	attempt := direct
 	attempt.EventID, attempt.Outcome = "attempt", "ATTEMPTED"
 	failed := direct
@@ -42,6 +47,8 @@ func TestReconstruct(t *testing.T) {
 		{"attempted", []entities.Event{attempt}, 1, 0, 1, []string{"attempt"}},
 		{"failed", []entities.Event{failed}, 1, 0, 1, []string{"failed"}},
 		{"conflicting duplicate", []entities.Event{direct, conflict}, 0, 0, 0, nil},
+		{"complementary endpoints", []entities.Event{receive, partial}, 2, 0, 1, []string{"partial", "receive"}},
+		{"ambiguous transfer ID", []entities.Event{receive, partial, ambiguous}, 3, 0, 0, nil},
 		{"no source clue", []entities.Event{receive}, 1, 0, 0, nil},
 		{"receive corroborates send", []entities.Event{receive, direct}, 2, 1, 0, []string{"direct"}},
 	} {

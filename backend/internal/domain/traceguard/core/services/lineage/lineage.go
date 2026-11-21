@@ -40,14 +40,14 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 				nodes[id] = entities.Node{ID: id, Label: id, Kind: kind}
 			}
 		}
+		if event.TransferID != "" && event.Action == "DATA_SENT" && event.Outcome == "COMPLETED" && event.SourceService != "" {
+			byTransfer[event.TransferID] = append(byTransfer[event.TransferID], event)
+		}
 		if !completedSend(event) {
 			continue
 		}
 		key := edgeKey{event.SourceService, event.DestinationService, entities.Observed}
 		evidence[key] = append(evidence[key], event.EventID)
-		if event.TransferID != "" {
-			byTransfer[event.TransferID] = append(byTransfer[event.TransferID], event)
-		}
 		if event.TraceID != "" && event.DataRef != "" {
 			key := dataKey{event.TraceID, event.DataRef}
 			byData[key] = append(byData[key], event)
@@ -77,7 +77,13 @@ func (s Service) Reconstruct(input []entities.Event) ([]entities.Event, entities
 				evidence[key] = append(evidence[key], event.EventID)
 				continue
 			}
-			source, ids := precedingDestination(event, target, byData[dataKey{event.TraceID, event.DataRef}])
+			source, ids, ambiguous := partialSendSource(event, target, byTransfer[event.TransferID])
+			if ambiguous {
+				continue
+			}
+			if source == "" {
+				source, ids = precedingDestination(event, target, byData[dataKey{event.TraceID, event.DataRef}])
+			}
 			if source != "" {
 				key := edgeKey{source, target, entities.Inferred}
 				evidence[key] = append(evidence[key], ids...)
@@ -116,7 +122,7 @@ func completedSend(event entities.Event) bool {
 
 func corroborated(receive entities.Event, target string, sends []entities.Event) bool {
 	for _, send := range sends {
-		if send.DestinationService == target &&
+		if completedSend(send) && send.DestinationService == target &&
 			compatible(receive.SourceService, send.SourceService) &&
 			compatible(receive.TraceID, send.TraceID) &&
 			compatible(receive.DataRef, send.DataRef) {
@@ -124,6 +130,24 @@ func corroborated(receive entities.Event, target string, sends []entities.Event)
 		}
 	}
 	return false
+}
+
+// partialSendSource resolves complementary endpoints without presenting them
+// as a directly logged transfer.
+func partialSendSource(receive entities.Event, target string, sends []entities.Event) (source string, ids []string, ambiguous bool) {
+	for _, send := range sends {
+		if send.DestinationService != "" || send.SourceService == target ||
+			send.OccurredAt.After(receive.OccurredAt) ||
+			!compatible(receive.TraceID, send.TraceID) || !compatible(receive.DataRef, send.DataRef) {
+			continue
+		}
+		if source != "" && source != send.SourceService {
+			return "", nil, true
+		}
+		source = send.SourceService
+		ids = append(ids, send.EventID)
+	}
+	return source, ids, false
 }
 
 func compatible(a, b string) bool {

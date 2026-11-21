@@ -1,12 +1,14 @@
 # BE2 detection handoff
 
-The Go module is `github.com/peyrone/traceguard-ai/backend`. Shared types live
-under `internal/domain/traceguard/core/entities`. Use `Event`, `Policy`, `Graph`,
-`Node`, `Edge`, `Finding`, `Status` and `EvidenceStatus`. The consumer interface
-lives in the adjacent `ports` package.
+Import `github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/entities`
+for `Event`, `Policy`, `Graph`, `Node`, `Edge`, `Finding`, `Status`, and
+`EvidenceStatus`. The consumer interface is
+`github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/ports.Detector`.
 
 ```go
-Detect(ctx context.Context, events []entities.Event, graph entities.Graph, policy entities.Policy) ([]entities.Finding, error)
+type Detector interface {
+	Detect(ctx context.Context, events []entities.Event, graph entities.Graph, policy entities.Policy) ([]entities.Finding, error)
+}
 ```
 
 Input events are deduplicated and sorted by event time. To evaluate a transfer,
@@ -25,8 +27,10 @@ Expected output contains a `DENY_EXTERNAL_PII` finding with status
 The lineage adapter retains the earliest receipt for retries of an identical
 event and drops IDs with conflicting payloads. A completed send with both
 endpoints is observed. An unmatched completed receipt can support an inferred
-edge using its explicit endpoints or a unique upstream destination with the
-same trace and data reference. Attempted and failed sends are inferred clues
+edge from its explicit endpoints, a single source from compatible partial sends
+sharing its transfer ID, or a unique upstream destination with the same trace
+and data reference. A complementary send and receipt cite both event IDs.
+Competing sources for the same partial transfer leave the source unresolved. Attempted and failed sends are inferred clues
 when both endpoints are present. Only completed sends support observed edges.
 
 The API uses `INCONCLUSIVE` until a detector supplies a status. To distinguish
