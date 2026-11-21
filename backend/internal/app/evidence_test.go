@@ -66,19 +66,19 @@ func TestEvidenceIntegrity(t *testing.T) {
 				for _, scenario := range []struct {
 					id       string
 					status   entities.Status
-					evidence string
+					evidence []string
 				}{
-					{"allowed_transfer", entities.NoViolationObserved, "evt-a-001"},
-					{"unauthorized_transfer", entities.VerifiedViolation, "evt-003"},
-					{"shuffled_transfer", entities.VerifiedViolation, "evt-s-003"},
-					{"missing_intermediate", entities.PotentialViolation, "evt-004"},
+					{"allowed_transfer", entities.NoViolationObserved, []string{"evt-a-001", "evt-a-005", "evt-a-006", "evt-a-007"}},
+					{"unauthorized_transfer", entities.VerifiedViolation, []string{"evt-003"}},
+					{"shuffled_transfer", entities.VerifiedViolation, []string{"evt-s-003"}},
+					{"missing_intermediate", entities.PotentialViolation, []string{"evt-004"}},
 				} {
 					rec := post(t, transport.analyze, "/api/v1/analyze", map[string]any{"scenario_id": scenario.id})
 					var result api.AnalyzeResponse
 					if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil || rec.Code != http.StatusOK || result.Summary.Status != api.Status(scenario.status) {
 						t.Fatalf("%s: %d %s (%v)", scenario.id, rec.Code, rec.Body, err)
 					}
-					if len(result.Findings) != 1 || !slices.Equal(result.Findings[0].EvidenceEventIds, []string{scenario.evidence}) {
+					if len(result.Findings) != 1 || !slices.Equal(result.Findings[0].EvidenceEventIds, scenario.evidence) {
 						t.Fatalf("%s: unexpected finding evidence: %+v", scenario.id, result.Findings)
 					}
 				}
