@@ -2,72 +2,62 @@
   margin-block: 20px 40px;
   scroll-margin-block: 20px;
 }
-.transfer-panel .panel-heading { flex-wrap: wrap; }
-.transfer-policy { display: inline-flex; align-items: baseline; gap: 6px; }
-.transfer-policy code { font-size: 13px; color: var(--ink); }
-.transfer-layout {
+.transfer-heading {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 30%);
   align-items: center;
-  gap: clamp(20px, 3vw, 48px);
-  padding: 20px;
+  gap: 16px 28px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
 }
-.transfer-controls { display: grid; gap: 8px; min-width: 0; }
-.transfer-controls label { font-size: 14px; font-weight: 650; }
+.transfer-heading h2 { display: flex; align-items: center; gap: 10px; }
+.transfer-heading h2 svg { flex: none; color: var(--accent); }
+.transfer-policy { margin: 4px 0 0 30px; font-size: 13px; color: var(--muted); }
+.transfer-policy code { font-size: inherit; color: var(--ink); }
+.transfer-controls { display: grid; gap: 4px; min-width: 0; }
+.transfer-controls label { font-size: 13px; font-weight: 650; }
 .transfer-controls select { width: 100%; min-width: 0; }
+.transfer-layout { display: grid; gap: 14px; padding: 18px 20px; }
+.transfer-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.transfer-path, .transfer-attributes { align-items: center; padding: 14px 18px; }
+.transfer-path {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+  background: var(--soft);
+}
+.transfer-path > div, .transfer-attributes div { display: grid; gap: 4px; min-width: 0; }
+.transfer-path > div > span, .transfer-attributes dt { font-size: 13px; color: var(--muted); }
+.transfer-path code { font-size: 14px; font-weight: 650; }
+.transfer-connector { display: flex; color: var(--accent); }
+.transfer-attributes {
+  display: grid;
+  grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr);
+  gap: 12px;
+  margin: 0;
+  border-inline-start: 1px solid var(--border);
+}
+.transfer-attributes dd { margin: 0; font: 600 13px/1.5 var(--mono); overflow-wrap: anywhere; }
 .transfer-submit {
-  justify-self: start;
+  justify-self: end;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding-inline: 16px;
-  margin-top: 4px;
+  padding-inline: 18px;
   border-color: transparent;
   background: var(--accent);
   color: var(--panel);
   font-weight: 650;
 }
 .transfer-submit:hover:not(:disabled) { background: var(--link-ink); }
-.transfer-preview {
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--soft);
-  overflow: hidden;
-}
-.transfer-path {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(32px, .5fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  padding: 18px 20px;
-  background-image: radial-gradient(color-mix(in srgb, var(--accent) 16%, transparent) 1px, transparent 1px);
-  background-size: 12px 12px;
-}
-.transfer-path > div { display: grid; gap: 4px; justify-items: start; }
-.transfer-path > div > span, .transfer-attributes dt { font-size: 13px; color: var(--muted); }
-.transfer-path code {
-  display: block;
-  max-width: 100%;
-  padding: 5px 9px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
-  font-weight: 650;
-}
-.transfer-connector { display: flex; align-items: center; color: var(--accent); }
-.transfer-connector::before { content: ''; flex: 1; border-top: 1px dashed currentColor; }
-.transfer-attributes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 24px;
-  padding: 9px 20px;
-  margin: 0;
-  border-top: 1px solid var(--border);
-  background: var(--panel);
-}
-.transfer-attributes div { display: flex; align-items: baseline; gap: 6px; }
-.transfer-attributes dd { margin: 0; font: 600 12px var(--mono); }
 .transfer-feedback {
   display: grid;
   gap: 3px;
@@ -88,8 +78,10 @@
   @keyframes transfer-reveal { from { opacity: .4; transform: translateY(3px); } }
 }
 @media (max-width: 760px) {
-  .transfer-layout { grid-template-columns: minmax(0, 1fr); padding: 15px; gap: 16px; }
-  .transfer-path { gap: 6px; padding: 14px 12px; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); }
-  .transfer-attributes { padding: 8px 12px; }
-  .transfer-submit { justify-self: stretch; justify-content: center; }
+  .transfer-heading { grid-template-columns: minmax(0, 1fr); padding: 15px; }
+  .transfer-layout { padding: 15px; }
+  .transfer-preview { grid-template-columns: minmax(0, 1fr); }
+  .transfer-path, .transfer-attributes { padding: 12px; }
+  .transfer-attributes { border-inline-start: 0; border-top: 1px solid var(--border); }
+  .transfer-submit { justify-self: stretch; }
 }
