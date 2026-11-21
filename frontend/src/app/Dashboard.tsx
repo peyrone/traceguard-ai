@@ -1,11 +1,48 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { caseHref } from './navigation';
 import { Icon } from '../components/Icon';
 import { statusLabels } from '../features/investigation/FindingStatus';
 import type { api, Analysis, Scenario } from '../lib/api/client';
+import type { AuditEvent } from '../lib/api/types';
 
 import { DashboardCharts, priorities, type AnalyzedCase } from './DashboardCharts';
 type CaseRow = { scenario: Scenario; analysis: Analysis | null };
+
+const scenarioLogs = import.meta.glob<{ events: AuditEvent[] }>(
+  '../../../backend/internal/adapters/fixtures/data/{allowed_transfer,unauthorized_transfer,shuffled_transfer,missing_intermediate,partial_evidence_confirmed}.json',
+  { eager: true, import: 'default' },
+);
+
+const auditTimeFormat = new Intl.DateTimeFormat('en-GB', {
+  dateStyle: 'medium',
+  timeStyle: 'medium',
+  timeZone: 'UTC',
+});
+
+function auditLabel(value: string) {
+  return value.toLowerCase().replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase());
+}
+
+function AuditRecord({ event }: { event: AuditEvent }) {
+  const fields: [string, ReactNode][] = [
+    ['Occurred at (UTC)', <time dateTime={event.occurred_at}>{auditTimeFormat.format(new Date(event.occurred_at))}</time>],
+    ['Event ID', <code>{event.event_id}</code>],
+    ['Service', <code>{event.service}</code>],
+    ['Action', auditLabel(event.action)],
+    ['Outcome', auditLabel(event.outcome)],
+  ];
+  if (event.trace_id) fields.push(['Trace ID', <code>{event.trace_id}</code>]);
+
+  return <div role="group" aria-label={`Audit event ${event.event_id}`}>
+    <dl style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
+      {fields.map(([label, value]) => <div key={label} className="surface"
+        style={{ maxWidth: '100%', padding: '6px 10px', borderRadius: 7, background: 'var(--soft)', boxShadow: 'none' }}>
+        <dt style={{ color: 'var(--muted)', fontSize: 12 }}>{label}</dt>
+        <dd style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{value}</dd>
+      </div>)}
+    </dl>
+  </div>;
+}
 
 interface Props {
   scenarios: Scenario[];
@@ -78,10 +115,20 @@ export default function Dashboard({ scenarios, client, listing, listError, onRef
         {queue.length === 0 && <p className="inset">{checked.length ? 'No analyzed cases need investigation.' : 'No analyses available.'}</p>}
         <ul className="case-queue">{queue.map(({ scenario, analysis: result }) => {
           const primary = result.findings.find(f => f.status === result.summary.status) ?? result.findings[0];
+          const citedIds = primary?.evidence_event_ids ?? result.graph.edges.flatMap(edge => edge.evidence_event_ids);
+          const eventIds = [...new Set(citedIds)];
+          const fixture = scenarioLogs[`../../../backend/internal/adapters/fixtures/data/${scenario.id}.json`];
+          const auditRecords = eventIds.map(id => ({ id, event: fixture?.events.find(event => event.event_id === id) }));
           return <li key={scenario.id}>
             <div className="queue-case">
-              <h3>{scenario.label}</h3>
+              <h3>{eventIds.join(', ') || 'No event ID available'}</h3>
               <p>{primary?.message ?? 'Available events do not prove compliance.'}</p>
+              {auditRecords.length > 0 && <details>
+                <summary style={{ cursor: 'pointer', color: 'var(--accent)', fontSize: 14 }}>Audit details</summary>
+                {auditRecords.map(({ id, event }) => event
+                  ? <AuditRecord key={id} event={event} />
+                  : <p key={id}><small>Audit record unavailable for {id}</small></p>)}
+              </details>}
             </div>
             <span className="review-status" data-status={result.summary.status}>{statusLabels[result.summary.status]}</span>
             <CaseActions scenario={scenario} />
