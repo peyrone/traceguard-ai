@@ -28,6 +28,13 @@ const (
 	Fallback ExplainResponseMode = "fallback"
 )
 
+// Defines values for PrivacyDecisionResponseDecision.
+const (
+	ALLOW         PrivacyDecisionResponseDecision = "ALLOW"
+	DENY          PrivacyDecisionResponseDecision = "DENY"
+	INDETERMINATE PrivacyDecisionResponseDecision = "INDETERMINATE"
+)
+
 // Defines values for Status.
 const (
 	INCONCLUSIVE        Status = "INCONCLUSIVE"
@@ -152,6 +159,28 @@ type Policy struct {
 	Classification      string   `json:"classification"`
 	PolicyId            string   `json:"policy_id"`
 }
+
+// PrivacyDecisionRequest The attributes required to reach a decision are optional on the wire so omitted attributes can return INDETERMINATE.
+type PrivacyDecisionRequest struct {
+	DataCategories     *[]string `json:"data_categories,omitempty"`
+	DestinationService *string   `json:"destination_service,omitempty"`
+	PolicyId           *string   `json:"policy_id,omitempty"`
+	Purpose            *string   `json:"purpose,omitempty"`
+	SourceService      *string   `json:"source_service,omitempty"`
+}
+
+// PrivacyDecisionResponse defines model for PrivacyDecisionResponse.
+type PrivacyDecisionResponse struct {
+	Decision PrivacyDecisionResponseDecision `json:"decision"`
+	Reason   string                          `json:"reason"`
+	RuleId   string                          `json:"rule_id"`
+
+	// TransferExecuted True only when the synthetic executor produced a receipt. Always false for DENY or INDETERMINATE.
+	TransferExecuted bool `json:"transfer_executed"`
+}
+
+// PrivacyDecisionResponseDecision defines model for PrivacyDecisionResponse.Decision.
+type PrivacyDecisionResponseDecision string
 
 // Scenario defines model for Scenario.
 type Scenario struct {
