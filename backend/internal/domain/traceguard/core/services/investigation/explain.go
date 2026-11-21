@@ -4,8 +4,10 @@ package investigation
 import (
 	"context"
 	"errors"
+	"log"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/peyrone/traceguard-ai/backend/internal/domain/traceguard/core/entities"
 )
@@ -17,14 +19,19 @@ type Evidence struct {
 }
 
 type EvidenceMetadata struct {
-	Ref     string `json:"ref"`
-	Action  string `json:"action,omitempty"`
-	Outcome string `json:"outcome,omitempty"`
+	Ref      string                  `json:"ref"`
+	Action   string                  `json:"action,omitempty"`
+	Outcome  string                  `json:"outcome,omitempty"`
+	Transfer entities.EvidenceStatus `json:"transfer,omitempty"`
 }
 
 type Request struct {
-	Status   entities.Status    `json:"status"`
-	Evidence []EvidenceMetadata `json:"evidence"`
+	Status            entities.Status    `json:"status"`
+	Evidence          []EvidenceMetadata `json:"evidence"`
+	Rule              string             `json:"rule,omitempty"`
+	Classification    string             `json:"classification,omitempty"`
+	MissingEvidence   []evidenceGap      `json:"missing_evidence,omitempty"`
+	ApplicableStepIDs []string           `json:"applicable_step_ids"`
 }
 
 type Suggestion struct {
@@ -52,6 +59,16 @@ type Service struct{ provider Provider }
 func New(provider Provider) Service { return Service{provider: provider} }
 
 func (s Service) Explain(ctx context.Context, finding entities.Finding, supplied []Evidence) (Result, error) {
+	steps := []string{"review_events", "check_policy"}
+	if finding.Status == entities.PotentialViolation || finding.Status == entities.Inconclusive {
+		steps = []string{"collect_records", "check_policy"}
+	}
+	return s.explain(ctx, finding, supplied, Request{
+		ApplicableStepIDs: steps,
+	}, nil, steps)
+}
+
+func (s Service) explain(ctx context.Context, finding entities.Finding, supplied []Evidence, request Request, transfers map[string]entities.EvidenceStatus, fallbackSteps []string) (Result, error) {
 	byID := make(map[string]Evidence, len(supplied))
 	for _, item := range supplied {
 		if item.EventID != "" {
@@ -59,7 +76,8 @@ func (s Service) Explain(ctx context.Context, finding entities.Finding, supplied
 		}
 	}
 	citations := []string{}
-	request := Request{Status: finding.Status, Evidence: []EvidenceMetadata{}}
+	request.Status = finding.Status
+	request.Evidence = []EvidenceMetadata{}
 	citedIDs := slices.Compact(sortedCopy(finding.EvidenceEventIDs))
 	supportsSend := false
 	for _, id := range citedIDs {
@@ -72,9 +90,10 @@ func (s Service) Explain(ctx context.Context, finding entities.Finding, supplied
 		supportsSend = supportsSend || ((event.Action == "" || event.Action == "DATA_SENT") &&
 			(event.Outcome == "" || event.Outcome == "COMPLETED"))
 		request.Evidence = append(request.Evidence, EvidenceMetadata{
-			Ref:     "E" + strconv.Itoa(len(citations)),
-			Action:  knownValue(event.Action, "DATA_SENT", "DATA_RECEIVED"),
-			Outcome: knownValue(event.Outcome, "COMPLETED", "ATTEMPTED", "FAILED"),
+			Ref:      "E" + strconv.Itoa(len(citations)),
+			Action:   knownValue(event.Action, "DATA_SENT", "DATA_RECEIVED"),
+			Outcome:  knownValue(event.Outcome, "COMPLETED", "ATTEMPTED", "FAILED"),
+			Transfer: transfers[id],
 		})
 	}
 
@@ -92,12 +111,28 @@ func (s Service) Explain(ctx context.Context, finding entities.Finding, supplied
 	default:
 		explanation = "Inconclusive. The available evidence is insufficient to determine the policy result."
 	}
-	result := Result{Status: finding.Status, Explanation: explanation, NextSteps: defaultSteps(finding.Status), EvidenceEventIDs: citations, Mode: "fallback"}
+	result := Result{Status: finding.Status, Explanation: explanation, NextSteps: renderSteps(fallbackSteps), EvidenceEventIDs: citations, Mode: "fallback"}
 	if s.provider == nil || ctx.Err() != nil || !knownStatus(finding.Status) {
 		return result, nil
 	}
+	start := time.Now()
 	suggestion, err := s.provider.Suggest(ctx, request)
-	if err != nil || ctx.Err() != nil || suggestion.Status != finding.Status {
+	duration := time.Since(start)
+	category := "none"
+	defer func() {
+		log.Printf("investigation provider duration_ms=%d fallback_category=%s", duration.Milliseconds(), category)
+	}()
+	switch {
+	case errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled):
+		category = "canceled"
+	case errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded):
+		category = "timeout"
+	case err != nil:
+		category = "provider_error"
+	case suggestion.Status != finding.Status:
+		category = "classification_mismatch"
+	}
+	if category != "none" {
 		return result, nil
 	}
 	expectedRefs := make([]string, 0, len(request.Evidence))
@@ -105,10 +140,19 @@ func (s Service) Explain(ctx context.Context, finding entities.Finding, supplied
 		expectedRefs = append(expectedRefs, item.Ref)
 	}
 	if !slices.Equal(sortedCopy(expectedRefs), sortedCopy(suggestion.EvidenceRefs)) {
+		category = "citation_mismatch"
 		return result, nil
+	}
+	for _, id := range suggestion.StepIDs {
+		if !slices.Contains(request.ApplicableStepIDs, id) {
+			category = "invalid_actions"
+			return result, nil
+		}
 	}
 	if steps := renderSteps(suggestion.StepIDs); len(steps) > 0 {
 		result.NextSteps, result.Mode = steps, "ai"
+	} else {
+		category = "invalid_actions"
 	}
 	return result, nil
 }
@@ -136,13 +180,15 @@ func knownStatus(status entities.Status) bool {
 }
 
 var stepText = map[string]string{
-	"review_events":   "Review the supporting audit events.",
-	"collect_records": "Collect missing send and receipt records.",
-	"check_policy":    "Check the destination and purpose against the policy allowlists.",
+	"review_export":          "Review the logged completed export and its destination.",
+	"collect_completed_send": "Obtain the completed send record with matching transfer endpoints.",
+	"review_events":          "Review the supporting audit events.",
+	"collect_records":        "Collect missing send and receipt records.",
+	"check_policy":           "Check the destination and purpose against the policy allowlists.",
 }
 
 func renderSteps(ids []string) []string {
-	if len(ids) == 0 || len(ids) > len(stepText) {
+	if len(ids) == 0 || len(ids) > 3 {
 		return nil
 	}
 	steps := make([]string, 0, len(ids))
@@ -154,11 +200,4 @@ func renderSteps(ids []string) []string {
 		steps = append(steps, text)
 	}
 	return steps
-}
-
-func defaultSteps(status entities.Status) []string {
-	if status == entities.PotentialViolation || status == entities.Inconclusive {
-		return renderSteps([]string{"collect_records", "check_policy"})
-	}
-	return renderSteps([]string{"review_events", "check_policy"})
 }

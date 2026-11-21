@@ -18,7 +18,7 @@ import (
 const endpoint = "https://api.openai.com/v1/chat/completions"
 const maxResponseBytes = 64 << 10
 
-const instructions = "Prioritize follow-up actions for this audit finding. Return one JSON object with status copied exactly, evidence_refs containing all supplied refs exactly once, and step_ids containing one to three distinct values from review_events, collect_records, check_policy. Do not include prose or extra fields."
+const instructions = "Prioritize follow-up actions for this audit finding. Return one JSON object with status copied exactly, evidence_refs containing all supplied refs exactly once, and step_ids containing one to three distinct values from the supplied applicable_step_ids. Do not include prose or extra fields."
 
 type Client struct {
 	apiKey, model string
